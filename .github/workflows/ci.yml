@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -5,18 +6,18 @@ on:
     branches: [main, dev]
 
 jobs:
-  ci:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Node from .nvmrc + cache
+      # Use Node from .nvmrc and enable pnpm cache
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
 
-      # Install pnpm (reliable on GitHub runners)
+      # Install pnpm on the runner (this puts pnpm on PATH)
       - uses: pnpm/action-setup@v4
         with:
           version: 10.18.1
@@ -27,7 +28,7 @@ jobs:
           node -v
           pnpm -v
 
-      - name: Install deps
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Lint
