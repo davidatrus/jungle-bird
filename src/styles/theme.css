@@ -1,0 +1,12 @@
+:root {
+  /* Vintage Rum — v2 */
+  --bg: #1b1612;
+  --surface: #231b16;
+  --text: #efe7d8;
+  --muted: #6e4b3a;
+  --line: #c69c6d; /* brass */
+  --cta: #e36e4b; /* bitters/orange peel */
+
+  /* helpers */
+  --ring: var(--line);
+}
