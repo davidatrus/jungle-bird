@@ -13,8 +13,13 @@ const getSiblings = (slug: string) => {
 };
 
 // optional SEO
-export function generateMetadata({ params }: { params: { slug: string } }) {
-  const p = getPost(params.slug);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const p = getPost(slug);
   if (!p) return {};
   return {
     title: `${p.title} • Jungle Bird`,
@@ -22,10 +27,14 @@ export function generateMetadata({ params }: { params: { slug: string } }) {
   };
 }
 
-export default function PostPage({ params }: { params: { slug: string } }) {
-  const post = getPost(params.slug);
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const post = getPost(slug);
   if (!post) {
-    // 404-style inline fallback
     return (
       <div className="py-20 text-center">
         <h1 className="font-display text-3xl">Article not found</h1>
