@@ -1,26 +1,96 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+.font-ui {
+  font-family: var(--font-ui), ui-sans-serif, system-ui;
+}
+.small-caps {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.18em;
+}
+
+/* Dark site */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base text uses Source Sans 3; headings use Prata */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    var(--font-ui),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial;
+}
+
+/* Headings default */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 400;
+}
+
+/* Utility: section titles */
+.section-title {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  font-weight: 400;
+}
+
+/* Brass borders & focus rings */
+.brass-border {
+  border-color: var(--line) !important;
+}
+:focus-visible {
+  outline: 2px solid var(--line);
+  outline-offset: 2px;
+}
+
+/* Sepia image helper */
+.sepia {
+  filter: sepia(0.35) contrast(1.05);
+  transition: filter 0.2s ease;
+}
+.sepia:hover {
+  filter: sepia(0.15) contrast(1.05);
+}
+
+/* Gallery scroller helpers */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scroll-snap-align-start {
+  scroll-snap-align: start;
+}
+
+/* Active link style matching*/
+.nav-link {
+  position: relative;
+}
+.nav-link[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -6px;
+  width: 24px;
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
 }
