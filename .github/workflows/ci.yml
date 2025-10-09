@@ -10,15 +10,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Use Node version from .nvmrc and cache pnpm store
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
 
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.18.1 --activate
-      - run: pnpm --version
+      # Make pnpm available (and lock its version)
+      - name: Enable corepack & pin pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.18.1 --activate
+          pnpm --version
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm build
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
