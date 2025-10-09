@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 const links = [
   { href: '/menu', label: 'Menu' },
@@ -12,8 +13,21 @@ const links = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isActive = (href: string) =>
-    pathname === href || (href !== '/' && pathname?.startsWith(href));
+  const [open, setOpen] = useState(false);
+
+  // Close mobile menu on route change / esc
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const linkClass =
+    'px-2 py-1 text-[12px] tracking-[0.12em] uppercase hover:opacity-80';
+
+  const activeStyle = (href: string) =>
+    pathname === href ? { borderBottom: '2px solid var(--line)' } : undefined;
 
   return (
     <header
@@ -24,32 +38,30 @@ export default function Navbar() {
         backdropFilter: 'blur(6px)',
       }}
     >
-      {/* RELATIVE container so we can absolutely center links and pin brand left */}
-      <nav className="relative mx-auto w-full px-4 lg:px-6">
-        {/* Fixed height to perfectly center absolute children */}
-        <div className="h-[48px] md:h-[56px]" />
+      {/* Grid keeps brand left, center links centered, menu button right */}
+      <nav className="mx-auto grid h-12 max-w-7xl grid-cols-[auto_1fr_auto] items-center px-4 md:h-14 lg:px-6">
+        {/* Brand */}
+        <div className="justify-self-start">
+          <Link
+            href="/"
+            className="font-display text-[18px] tracking-[0.02em] md:text-[20px]"
+            style={{ color: 'var(--text)' }}
+          >
+            Jungle Bird
+          </Link>
+        </div>
 
-        {/* Brand — pinned left */}
-        <Link
-          href="/"
-          aria-label="Jungle Bird Home"
-          className="font-display absolute top-1/2 left-4 -translate-y-1/2 text-lg tracking-[0.02em] md:text-xl lg:left-6"
-          style={{ color: 'var(--text)' }}
-        >
-          Jungle Bird
-        </Link>
-
-        {/* Centered links — desktop */}
+        {/* Centered links on md+ */}
         <ul
-          className="font-ui absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-7 text-[12px] tracking-[0.12em] uppercase md:flex xl:gap-9"
+          className="hidden items-center justify-center gap-6 text-[12px] md:flex xl:gap-8"
           style={{ color: 'var(--text)' }}
         >
           {links.map((l) => (
             <li key={l.href}>
               <Link
+                className={linkClass}
+                style={activeStyle(l.href)}
                 href={l.href}
-                className="nav-link transition-opacity hover:opacity-80"
-                aria-current={isActive(l.href) ? 'page' : undefined}
               >
                 {l.label}
               </Link>
@@ -57,24 +69,50 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Mobile: centered inline links; brand stays pinned left */}
-        <ul
-          className="font-ui absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-5 text-[12px] tracking-[0.12em] uppercase md:hidden"
-          style={{ color: 'var(--text)' }}
-        >
-          {links.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                className="nav-link transition-opacity hover:opacity-80"
-                aria-current={isActive(l.href) ? 'page' : undefined}
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {/* Mobile hamburger */}
+        <div className="justify-self-end md:hidden">
+          <button
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            aria-label="Toggle menu"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex appearance-none items-center justify-center rounded-md px-2 py-1 ring-0 transition outline-none select-none focus:ring-0 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--line)] active:scale-[0.98]"
+            style={{
+              color: 'var(--text)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span className="block h-[2px] w-6 bg-[var(--text)]" />
+            <span className="mt-1.5 block h-[2px] w-6 bg-[var(--text)]" />
+            <span className="mt-1.5 block h-[2px] w-6 bg-[var(--text)]" />
+          </button>
+        </div>
       </nav>
+
+      {/* Slide-down panel on mobile */}
+      <div
+        id="mobile-nav"
+        className={`overflow-hidden transition-[max-height] duration-200 ease-out md:hidden`}
+        style={{
+          maxHeight: open ? '240px' : '0px',
+          background: 'rgba(27,22,18,.97)',
+          borderTop: open ? '1px solid var(--line)' : '0',
+        }}
+      >
+        <ul className="space-y-2 px-4 py-3" style={{ color: 'var(--text)' }}>
+          {links.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                className="block px-1 py-2 text-sm tracking-[0.12em] uppercase"
+                style={activeStyle(l.href)}
+              >
+                {l.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </header>
   );
 }

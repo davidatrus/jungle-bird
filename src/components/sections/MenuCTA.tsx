@@ -14,7 +14,7 @@ export default function MenuCTA() {
         </p>
         <a
           href="/menu"
-          className="inline-block rounded-full border px-6 py-3 text-sm"
+          className="btn-pop btn-shadow inline-block rounded-full border px-6 py-3 text-sm"
           style={{ background: 'var(--cta)', color: '#1B1612' }}
         >
           View Menu
