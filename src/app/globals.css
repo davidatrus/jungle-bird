@@ -94,3 +94,29 @@ h6 {
   background: var(--line);
   border-radius: 2px;
 }
+
+/* Buttons: soft pop + brass ring */
+.btn-pop {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    outline-color 0.18s ease;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-pop {
+    transition: none;
+  }
+}
+.btn-pop:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+.btn-pop:active {
+  transform: translateY(0) scale(0.98);
+}
+.btn-shadow {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+.btn-shadow:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.26);
+}

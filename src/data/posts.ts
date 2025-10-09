@@ -4,6 +4,8 @@ export type Post = {
   excerpt: string;
   image: string;
   href: string;
+  slug: string;
+  content?: string[];
 };
 
 export const posts: Post[] = [
@@ -13,6 +15,7 @@ export const posts: Post[] = [
     excerpt: 'Step back into the era that inspired our lounge.',
     image: '/images/post-1.jpg',
     href: '/blog/the-roaring-twenties',
+    slug: 'the-roaring-twenties',
   },
   {
     id: '2',
@@ -20,6 +23,7 @@ export const posts: Post[] = [
     excerpt: 'How we remaster the classics for modern palates.',
     image: '/images/post-2.jpg',
     href: '/blog/behind-the-cocktails',
+    slug: 'behind-the-cocktails',
   },
   {
     id: '3',
@@ -27,5 +31,6 @@ export const posts: Post[] = [
     excerpt: 'A quick guide from our bartenders.',
     image: '/images/post-3.jpg',
     href: '/blog/perfect-rum',
+    slug: 'perfect-rum',
   },
 ];
