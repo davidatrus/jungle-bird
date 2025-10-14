@@ -2,23 +2,29 @@
 import { useRef } from 'react';
 
 const IMAGES = [
-  '/images/gallery-1.jpg',
-  '/images/gallery-2.jpg',
-  '/images/gallery-3.jpg',
-  '/images/gallery-4.jpg',
-  '/images/gallery-5.jpg',
-  '/images/gallery-6.jpg',
+  '/images/gallery/gallery-1.jpg',
+  '/images/gallery/gallery-2.jpg',
+  '/images/gallery/gallery-3.jpg',
+  '/images/gallery/gallery-4.jpg',
+  '/images/gallery/gallery-5.jpg',
+  '/images/gallery/gallery-6.jpg',
+  '/images/gallery/gallery-7.jpg',
+  '/images/gallery/gallery-8.jpg',
 ];
+
+const STEP = 1; // change to 2 to move two at a time
+const CARD_GAP = 16; // must match the gap in the grid below
 
 export default function Gallery() {
   const scroller = useRef<HTMLDivElement>(null);
 
-  const scrollBy = (dir: number) => {
+  const scrollByCards = (dir: 1 | -1) => {
     const el = scroller.current;
     if (!el) return;
-    const card = el.firstElementChild as HTMLElement | null;
-    const width = card ? card.getBoundingClientRect().width + 16 : 320;
-    el.scrollBy({ left: dir * (width * 3), behavior: 'smooth' });
+    const firstCard = el.querySelector<HTMLElement>('[data-card]');
+    const width = firstCard ? firstCard.getBoundingClientRect().width : 320;
+    const delta = dir * (width + CARD_GAP) * STEP;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
   return (
@@ -30,7 +36,7 @@ export default function Gallery() {
           {/* Arrows */}
           <button
             aria-label="Previous"
-            onClick={() => scrollBy(-1)}
+            onClick={() => scrollByCards(-1)}
             className="brass-border absolute top-1/2 left-0 -translate-y-1/2 rounded-full border px-3 py-2 opacity-70 hover:opacity-100"
             style={{ background: 'rgba(27,22,18,.6)', color: 'var(--text)' }}
           >
@@ -38,7 +44,7 @@ export default function Gallery() {
           </button>
           <button
             aria-label="Next"
-            onClick={() => scrollBy(1)}
+            onClick={() => scrollByCards(1)}
             className="brass-border absolute top-1/2 right-0 -translate-y-1/2 rounded-full border px-3 py-2 opacity-70 hover:opacity-100"
             style={{ background: 'rgba(27,22,18,.6)', color: 'var(--text)' }}
           >
@@ -48,14 +54,14 @@ export default function Gallery() {
           {/* Scroller */}
           <div
             ref={scroller}
-            className="scrollbar-none overflow-x-auto scroll-smooth"
-            style={{ scrollSnapType: 'x mandatory' }}
+            className="scrollbar-none snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2"
           >
             <div className="grid auto-cols-[minmax(280px,1fr)] grid-flow-col gap-4 md:auto-cols-[minmax(360px,1fr)]">
               {IMAGES.map((src) => (
                 <div
                   key={src}
-                  className="scroll-snap-align-start overflow-hidden rounded-2xl ring-1 ring-[var(--ring)]"
+                  data-card
+                  className="snap-start overflow-hidden rounded-2xl ring-1 ring-[var(--ring)]"
                 >
                   <img
                     src={src}

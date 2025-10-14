@@ -1,4 +1,5 @@
 import SocialIconsMask from '@/components/shared/SocialIconsMask';
+import { ADDRESS, EMAIL } from '@/lib/constants';
 
 export default function Footer() {
   return (
@@ -14,12 +15,9 @@ export default function Footer() {
           >
             Address
           </h5>
-          <p style={{ color: 'var(--text)' }}>
-            123 Example St SW
-            <br />
-            Calgary AB
-          </p>
+          <p style={{ color: 'var(--text)' }}>{ADDRESS}</p>
         </div>
+
         <div>
           <h5
             className="mb-2 text-sm tracking-wider uppercase"
@@ -28,26 +26,21 @@ export default function Footer() {
             Contact
           </h5>
           <p style={{ color: 'var(--text)' }}>
-            (825) 000 0000
-            <br />
-            hello@junglebird.example
+            <a
+              className="underline underline-offset-4"
+              href={`mailto:${EMAIL}`}
+            >
+              {EMAIL}
+            </a>
           </p>
         </div>
+
         <div>
           <h5
             className="mb-2 text-sm tracking-wider uppercase"
             style={{ color: 'var(--muted)' }}
           >
-            Follow
-          </h5>
-          <SocialIconsMask size={22} gap="gap-4" />
-        </div>
-        <div>
-          <h5
-            className="mb-2 text-sm tracking-wider uppercase"
-            style={{ color: 'var(--muted)' }}
-          >
-            Open Hours
+            Hours
           </h5>
           <p style={{ color: 'var(--text)' }}>
             Sun–Thu: 5:00pm–1:00am
@@ -57,7 +50,18 @@ export default function Footer() {
             Mon: Closed
           </p>
         </div>
+
+        <div>
+          <h5
+            className="mb-2 text-sm tracking-wider uppercase"
+            style={{ color: 'var(--muted)' }}
+          >
+            Follow
+          </h5>
+          <SocialIconsMask size={22} gap="gap-4" />
+        </div>
       </div>
+
       <div
         className="mt-8 text-center text-xs"
         style={{ color: 'var(--muted)' }}
