@@ -9,32 +9,19 @@ import { OPENTABLE_URL } from '@/lib/constants';
 export default function Hero() {
   const vidRef = useRef<HTMLVideoElement>(null);
 
-  // Keep the background video playing whenever the tab is visible
   useEffect(() => {
     const v = vidRef.current;
     if (!v) return;
-
-    // ensure correct flags for mobile Safari
     v.muted = true;
-
     v.playsInline = true;
-
     const kick = () => v.play().catch(() => {});
-
-    kick(); // try on mount
-
-    const onVis = () => {
-      if (document.visibilityState === 'visible') kick();
-    };
-    const onPause = () => {
-      if (document.visibilityState === 'visible') kick();
-    };
+    kick();
+    const onVis = () => document.visibilityState === 'visible' && kick();
+    const onPause = () => document.visibilityState === 'visible' && kick();
     const onLoaded = () => kick();
-
     document.addEventListener('visibilitychange', onVis);
     v.addEventListener('pause', onPause);
     v.addEventListener('loadeddata', onLoaded);
-
     return () => {
       document.removeEventListener('visibilitychange', onVis);
       v.removeEventListener('pause', onPause);
@@ -43,14 +30,8 @@ export default function Hero() {
   }, []);
 
   return (
-    <section
-      className="relative flex items-center justify-center overflow-hidden"
-      style={{
-        minHeight: '76vh',
-        background: "url('/images/misc/hero.jpg') center/cover no-repeat",
-      }}
-    >
-      {/* Background video */}
+    <section className="relative flex min-h-[70svh] items-center justify-center overflow-hidden">
+      {/* Background video only */}
       <video
         ref={vidRef}
         className="pointer-events-none absolute inset-0 h-full w-full object-cover motion-reduce:hidden"
@@ -59,7 +40,6 @@ export default function Hero() {
         loop
         playsInline
         preload="auto"
-        poster="/images/misc/hero.jpg"
         aria-hidden="true"
       >
         <source src="/video/hero_loop.mp4" type="video/mp4" />
@@ -82,27 +62,20 @@ export default function Hero() {
       </div>
 
       {/* Foreground */}
-      <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center px-6 pt-8 md:pt-10">
-        {/* Logo (blend + soft halo to hide imperfect edges) */}
+      <div className="relative z-10 mx-auto flex flex-col items-center gap-[clamp(10px,1.4vw,16px)] px-6">
         <Image
-          src="/images/logo/logo-icon.png"
+          src="/images/logo/logo-icon.png" // 1526 x 973
           alt="Jungle Bird — Tiki Cave & Lounge"
-          width={460}
-          height={210}
+          width={1526}
+          height={973}
           priority
-          className="mx-auto w-[320px] md:w-[460px]"
-          style={{
-            // Whites tuck into the background, but we keep the grayscale detail.
-            mixBlendMode: 'multiply',
-            // Soft halo to hide any faint matte edge; subtle contrast for crispness.
-            filter:
-              'drop-shadow(0 0 12px rgba(27,22,18,.48)) brightness(.97) contrast(1.08)',
-            opacity: 0.98,
-          }}
+          quality={95}
+          className="mx-auto h-auto max-h-[min(38svh,540px)] w-[clamp(280px,36vw,900px)]"
+          sizes="(min-width:1280px) 900px, (min-width:768px) 36vw, 82vw"
         />
 
-        {/* CTAs */}
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
+        {/* CTAs just below the logo */}
+        <div className="flex flex-wrap items-center justify-center gap-4">
           <a
             href={OPENTABLE_URL}
             className="btn-pop btn-shadow brass-border rounded-full px-5 py-3 text-sm font-semibold"
