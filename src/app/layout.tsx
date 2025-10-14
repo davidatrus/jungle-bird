@@ -3,7 +3,12 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Jungle Bird',
-  description: 'Vintage Rum Bar',
+  description: 'Tiki-Cave & Lounge. Welcome to the Jungle',
+  icons: {
+    icon: '/images/logo/icon.png', // browser tab
+    shortcut: '/images/logo/icon.png',
+    apple: '/images/logo/icon.png', // iOS home screen
+  },
 };
 
 export default function RootLayout({

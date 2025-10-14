@@ -120,3 +120,23 @@ h6 {
 .btn-shadow:hover {
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.26);
 }
+/* Dark scrim overlay for text-on-image sections */
+.scrim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(17, 18, 20, 0.72),
+    rgba(17, 18, 20, 0.82)
+  );
+  pointer-events: none;
+}
+
+/* Glassy backplate behind headings/buttons (optional) */
+.backplate {
+  background: rgba(17, 18, 20, 0.35);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(201, 163, 90, 0.25); /* brass hint */
+  border-radius: 9999px;
+}

@@ -6,22 +6,24 @@ type Props = {
   color?: string; // glyph color (default from theme)
 };
 
+import { SOCIAL_LINKS } from '@/lib/constants';
+
 type Item = { href: string; label: string; src: string };
 
 const ICONS: Item[] = [
   {
-    href: 'https://facebook.com/',
+    href: SOCIAL_LINKS.facebook,
     label: 'Facebook',
     src: '/icons/facebook.svg',
   },
   {
-    href: 'https://instagram.com/',
+    href: SOCIAL_LINKS.instagram,
     label: 'Instagram',
     src: '/icons/instagram.svg',
   },
-  { href: 'https://tiktok.com/', label: 'TikTok', src: '/icons/tiktok.svg' },
+  { href: SOCIAL_LINKS.tiktok, label: 'TikTok', src: '/icons/tiktok.svg' },
   {
-    href: 'https://snapchat.com/',
+    href: SOCIAL_LINKS.snapchat,
     label: 'Snapchat',
     src: '/icons/snapchat.svg',
   },

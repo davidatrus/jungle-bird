@@ -1,20 +1,22 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { ADDRESS, EMAIL, INSTAGRAM_URL } from '@/lib/constants';
 
 export default function ContactPage() {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [emailFrom, setEmailFrom] = useState('');
   const [msg, setMsg] = useState('');
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const to = 'hello@junglebird.example';
     const subject = encodeURIComponent(
       `Website Message from ${name || 'Guest'}`,
     );
-    const body = encodeURIComponent(`From: ${name}\nEmail: ${email}\n\n${msg}`);
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent(
+      `From: ${name}\nEmail: ${emailFrom}\n\n${msg}`,
+    );
+    window.location.href = `mailto:${EMAIL}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -28,30 +30,57 @@ export default function ContactPage() {
 
       {/* Contact details */}
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
             <h2 className="font-display text-lg">ADDRESS</h2>
-            <p className="opacity-80">123 Example St SW, Calgary AB</p>
+            <p className="opacity-80">{ADDRESS}</p>
           </div>
-          <div>
-            <h2 className="font-display text-lg">PHONE</h2>
-            <p>
-              <a className="underline hover:opacity-90" href="tel:+18250000000">
-                (825) 000 0000
-              </a>
-            </p>
-          </div>
+
           <div>
             <h2 className="font-display text-lg">EMAIL</h2>
             <p>
               <a
                 className="underline hover:opacity-90"
-                href="mailto:hello@junglebird.example"
+                href={`mailto:${EMAIL}`}
               >
-                hello@junglebird.example
+                {EMAIL}
               </a>
             </p>
           </div>
+
+          {/* Instagram DM */}
+          <div className="flex items-center gap-3">
+            {/* Instagram icon (inline SVG so no extra deps) */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              style={{ color: 'var(--text)' }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4.2" />
+              <circle
+                cx="17.5"
+                cy="6.5"
+                r="1.2"
+                fill="currentColor"
+                stroke="none"
+              />
+            </svg>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4 hover:opacity-90"
+              style={{ color: 'var(--text)' }}
+            >
+              Shoot us a DM on Instagram
+            </a>
+          </div>
+
           <div>
             <h2 className="font-display text-lg">HOURS</h2>
             <p className="opacity-80">
@@ -86,8 +115,8 @@ export default function ContactPage() {
               className="brass-border w-full rounded-md border bg-transparent px-3 py-2"
               style={{ color: 'var(--text)' }}
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={emailFrom}
+              onChange={(e) => setEmailFrom(e.target.value)}
               placeholder="jane@example.com"
               required
             />
@@ -113,7 +142,7 @@ export default function ContactPage() {
         </form>
       </section>
 
-      {/* FAQ */}
+      {/* FAQ (unchanged) */}
       <section className="pt-2">
         <h2 className="font-display mb-4 text-2xl">FAQ</h2>
         <div className="space-y-3">
