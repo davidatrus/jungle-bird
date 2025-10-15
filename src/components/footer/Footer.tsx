@@ -2,7 +2,7 @@ import SocialIconsMask from '@/components/shared/SocialIconsMask';
 import { client } from '@/sanity/client';
 import { qSettings } from '@/sanity/queries';
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 type Hour = { days: string; time: string };
 type Settings = {
