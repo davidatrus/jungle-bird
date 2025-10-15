@@ -1,6 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: 'Jungle Bird',
   description: 'Tiki-Cave & Lounge. Welcome to the Jungle',
