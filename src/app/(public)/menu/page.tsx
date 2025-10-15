@@ -1,87 +1,74 @@
-'use client';
+import { client } from '@/sanity/client';
+import { qMenu } from '@/sanity/queries';
 
-import Image from 'next/image';
-import { useMemo } from 'react';
+const LOCAL_FALLBACK_PDF = '/images/menu/menu.pdf';
 
-const MENU_PAGES = [
-  '/images/menu/1.png',
-  '/images/menu/2.png',
-  '/images/menu/3.png',
-  '/images/menu/4.png',
-  '/images/menu/5.png',
-  '/images/menu/6.png',
-  '/images/menu/7.png',
-  '/images/menu/8.png',
-  '/images/menu/9.png',
-];
+export const revalidate = 60; // 0 in dev if you want
 
-export default function MenuPage() {
-  const pages = useMemo(() => MENU_PAGES, []);
+export default async function MenuPage() {
+  const data = await client.fetch(qMenu).catch(() => null);
+  const pdfUrl: string = data?.menuPdf?.asset?.url || LOCAL_FALLBACK_PDF;
+  const version: string | undefined = data?.version;
+  const updated: string | undefined = data?.updated;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-6 text-center">
         <h1 className="section-title text-3xl md:text-4xl">Menu</h1>
-        <p className="mt-2 text-sm opacity-80">Tap any page to zoom/open.</p>
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={() => window.print()}
-            className="btn-pop brass-border rounded-full px-4 py-2 text-xs font-semibold"
-            style={{
-              background: 'var(--cta)',
-              color: '#1B1612',
-              border: '1px solid var(--line)',
-            }}
+        <div className="mt-2 text-sm opacity-70">
+          {version ? <span>{version}</span> : null}
+          {updated ? (
+            <span className="ml-2">
+              • Updated {new Date(updated).toLocaleDateString()}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="brass-border rounded-full border px-4 py-2 text-sm font-semibold"
+            style={{ color: 'var(--text)' }}
           >
-            Print / Save
-          </button>
+            Open in new tab
+          </a>
+          <a
+            href={pdfUrl + '?dl='}
+            className="btn-pop btn-shadow brass-border rounded-full px-4 py-2 text-sm font-semibold"
+            style={{ background: 'var(--cta)', color: '#1B1612' }}
+            download
+          >
+            Download PDF
+          </a>
         </div>
       </header>
 
-      <div className="space-y-6">
-        {pages.map((src, i) => (
-          <a
-            key={src}
-            href={src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block"
-            aria-label={`Open menu page ${i + 1} in new tab`}
-          >
-            <div className="brass-border overflow-hidden rounded-2xl ring-1">
-              <Image
-                src={src}
-                alt={`Menu page ${i + 1}`}
-                width={1600}
-                height={2200}
-                className="h-auto w-full object-contain"
-                priority={i === 0}
-              />
-            </div>
-          </a>
-        ))}
+      <div className="overflow-hidden rounded-2xl ring-1 ring-[var(--line)]">
+        <object
+          data={pdfUrl}
+          type="application/pdf"
+          className="h-[80vh] w-full"
+        >
+          <div className="p-6 text-center">
+            <p className="opacity-80">
+              It looks like your browser can’t display PDFs inline.
+            </p>
+            <p className="mt-2">
+              <a
+                className="underline"
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open the menu PDF in a new tab
+              </a>
+              .
+            </p>
+          </div>
+        </object>
       </div>
-
-      <style jsx global>{`
-        @media print {
-          body {
-            background: #fff !important;
-            color: #000 !important;
-          }
-          header,
-          nav,
-          footer {
-            display: none !important;
-          }
-          img {
-            max-width: 100%;
-            height: auto;
-          }
-          .brass-border {
-            border-color: #000 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -7,15 +7,22 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+      NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+      # Optional: keep CI logs quiet & deterministic
+      NEXT_TELEMETRY_DISABLED: '1'
+
     steps:
       - uses: actions/checkout@v4
 
-      # Just set Node 
+      # Node from your .nvmrc
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
 
-      # Install pnpm 
+      # pnpm via Corepack
       - name: Enable Corepack & install pnpm
         run: |
           corepack enable

@@ -1,17 +1,12 @@
-import Image from 'next/image';
+import { client } from '@/sanity/client';
+import { qGallery } from '@/sanity/queries';
+import GalleryGrid from '@/components/gallery/GalleryGrid';
 
-const items = [
-  '/images/gallery/gallery-1.jpg',
-  '/images/gallery/gallery-2.jpg',
-  '/images/gallery/gallery-3.jpg',
-  '/images/gallery/gallery-4.jpg',
-  '/images/gallery/gallery-5.jpg',
-  '/images/gallery/gallery-6.jpg',
-  '/images/gallery/gallery-7.jpg',
-  '/images/gallery/gallery-8.jpg',
-];
+export const revalidate = 60;
 
-export default function GalleryPage() {
+export default async function GalleryPage() {
+  const items = await client.fetch(qGallery).catch(() => []);
+
   return (
     <>
       <header className="mb-8 text-center md:mb-10">
@@ -21,23 +16,8 @@ export default function GalleryPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
-        {items.map((src, i) => (
-          <figure
-            key={i}
-            className="group brass-border overflow-hidden rounded-2xl border"
-          >
-            <Image
-              src={src}
-              alt=""
-              width={1200}
-              height={900}
-              className="h-64 w-full object-cover transition duration-200 group-hover:scale-[1.02] group-hover:sepia"
-              priority={i < 3}
-            />
-          </figure>
-        ))}
-      </section>
+      {/* Turn on captions for this page only */}
+      <GalleryGrid items={items} imgClass="h-64 md:h-72" showCaptions />
     </>
   );
 }

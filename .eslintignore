@@ -1,0 +1,6 @@
+# ignore the Sanity Studio from app linting
+studio/**
+# just incase 
+node_modules/**
+.next/**
+dist/**

@@ -1,0 +1,13 @@
+import {defineConfig} from 'sanity'
+import {deskTool} from 'sanity/desk'
+import {visionTool} from '@sanity/vision'
+import {schemaTypes} from './schemas'
+
+export default defineConfig({
+  name: 'default',
+  title: 'Jungle Bird',
+  projectId: 'x77edsca', // <-- your real projectId
+  dataset: 'production',
+  plugins: [deskTool(), visionTool()],
+  schema: {types: schemaTypes},
+})
