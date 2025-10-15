@@ -1,7 +1,19 @@
 import SocialIconsMask from '@/components/shared/SocialIconsMask';
-import { ADDRESS, EMAIL } from '@/lib/constants';
+import { client } from '@/sanity/client';
+import { qSettings } from '@/sanity/queries';
 
-export default function Footer() {
+export const revalidate = 300;
+
+type Hour = { days: string; time: string };
+type Settings = {
+  address?: string;
+  email?: string;
+  hours?: Hour[];
+};
+
+export default async function Footer() {
+  const s = await client.fetch<Settings>(qSettings).catch(() => null);
+
   return (
     <footer
       className="border-t py-12"
@@ -15,7 +27,9 @@ export default function Footer() {
           >
             Address
           </h5>
-          <p style={{ color: 'var(--text)' }}>{ADDRESS}</p>
+          <p style={{ color: 'var(--text)' }} className="whitespace-pre-line">
+            {s?.address || '—'}
+          </p>
         </div>
 
         <div>
@@ -26,12 +40,16 @@ export default function Footer() {
             Contact
           </h5>
           <p style={{ color: 'var(--text)' }}>
-            <a
-              className="underline underline-offset-4"
-              href={`mailto:${EMAIL}`}
-            >
-              {EMAIL}
-            </a>
+            {s?.email ? (
+              <a
+                className="underline underline-offset-4"
+                href={`mailto:${s.email}`}
+              >
+                {s.email}
+              </a>
+            ) : (
+              '—'
+            )}
           </p>
         </div>
 
@@ -43,11 +61,13 @@ export default function Footer() {
             Hours
           </h5>
           <p style={{ color: 'var(--text)' }}>
-            Sun–Thu: 5:00pm–1:00am
-            <br />
-            Fri–Sat: 5:00pm–2:00am
-            <br />
-            Mon: Closed
+            {s?.hours?.length
+              ? s.hours.map((h: Hour) => (
+                  <span key={h.days + h.time} className="block">
+                    {h.days}: {h.time}
+                  </span>
+                ))
+              : '—'}
           </p>
         </div>
 

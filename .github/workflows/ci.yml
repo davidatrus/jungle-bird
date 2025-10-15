@@ -7,18 +7,35 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+      NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+      # Optional: keep CI logs quiet & deterministic
+      NEXT_TELEMETRY_DISABLED: '1'
+
     steps:
       - uses: actions/checkout@v4
 
+      # Node from your .nvmrc
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: 'pnpm'
 
-      - name: Install pnpm
+      # pnpm via Corepack
+      - name: Enable Corepack & install pnpm
         run: |
-          npm i -g pnpm@10.18.1
+          corepack enable
+          corepack prepare pnpm@10.18.1 --activate
           pnpm -v
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
