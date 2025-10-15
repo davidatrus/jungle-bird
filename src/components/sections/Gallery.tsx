@@ -3,15 +3,13 @@ import { client } from '@/sanity/client';
 import { qGallery } from '@/sanity/queries';
 import GalleryCarouselClient from '@/components/gallery/GalleryCarousel.client';
 
-export const revalidate = 60;
-
 export default async function HomeGallerySection() {
-  const items = await client.fetch(qGallery).catch(() => []);
+  const items =
+    (await client
+      .fetch(qGallery, {}, { next: { revalidate: 60, tags: ['gallery'] } })
+      .catch(() => [])) || [];
 
-  // OPTIONAL: cap the number shown on homepage for perf/UX
-  // const items = (allItems || []).slice(0, 18);
-
-  if (!items?.length) return null;
+  if (!items.length) return null;
 
   return (
     <section className="mx-auto mt-12 max-w-6xl px-4">
