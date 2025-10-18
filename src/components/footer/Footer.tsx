@@ -5,10 +5,19 @@ import { qSettings } from '@/sanity/queries';
 export const revalidate = 60;
 
 type Hour = { days: string; time: string };
+type Social = {
+  facebook?: string;
+  instagram?: string;
+  tiktok?: string;
+  snapchat?: string;
+};
+
 type Settings = {
   address?: string;
   email?: string;
   hours?: Hour[];
+  social?: Social;
+  openTableUrl?: string;
 };
 
 export default async function Footer() {
@@ -78,7 +87,11 @@ export default async function Footer() {
           >
             Follow
           </h5>
-          <SocialIconsMask size={22} gap="gap-4" />
+          <SocialIconsMask
+            size={22}
+            gap="gap-4"
+            links={s?.social ?? undefined}
+          />
         </div>
       </div>
 

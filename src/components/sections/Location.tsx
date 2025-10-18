@@ -1,9 +1,26 @@
-import { ADDRESS, EMAIL } from '@/lib/constants';
+// (SERVER)
+import { client } from '@/sanity/client';
+import { qSettings } from '@/sanity/queries';
+
+export const revalidate = 60;
+
+type Hour = { days: string; time: string };
+type Settings = {
+  address?: string | null;
+  email?: string | null;
+  hours?: Hour[] | null;
+};
 
 const MAP_SRC =
   'https://www.google.com/maps?q=725A%2017%20Ave%20SW%2C%20Calgary%2C%20AB&output=embed';
 
-export default function Location() {
+export default async function Location() {
+  const s = await client.fetch<Settings>(qSettings).catch(() => null);
+
+  const address = s?.address?.trim() || '';
+  const email = s?.email?.trim() || '';
+  const hours = s?.hours || [];
+
   return (
     <section
       className="py-16 md:py-24"
@@ -13,10 +30,10 @@ export default function Location() {
         <h3 className="section-title mb-6 text-3xl md:text-4xl">Find Us</h3>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          {/* Map */}
+          {/* Map (constant) */}
           <div className="overflow-hidden rounded-2xl ring-1 ring-[var(--line)]">
             <iframe
-              title="Map to Jungle Bird (725A 17 Ave SW)"
+              title={address ? `Map to ${address}` : 'Map'}
               src={MAP_SRC}
               className="h-72 w-full md:h-full"
               loading="lazy"
@@ -24,23 +41,13 @@ export default function Location() {
             />
           </div>
 
-          {/* Details only (no Book button) */}
+          {/* Details */}
           <div className="space-y-6">
             <div>
               <h4 className="text-lg" style={{ color: 'var(--text)' }}>
                 Address
               </h4>
-              <p style={{ color: 'var(--muted)' }}>{ADDRESS}</p>
-              <a
-                href="https://www.google.com/maps/dir/?api=1&destination=725A%2017%20Ave%20SW%2C%20Calgary%2C%20AB"
-                className="mt-2 inline-block underline underline-offset-4"
-                style={{ color: 'var(--text)' }}
-              >
-                Get Directions
-              </a>
-              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                Basement entrance — our warm, ember-lit tiki-cave awaits.
-              </p>
+              <p style={{ color: 'var(--muted)' }}>{address || '—'}</p>
             </div>
 
             <div>
@@ -48,12 +55,16 @@ export default function Location() {
                 Contact
               </h4>
               <p style={{ color: 'var(--muted)' }}>
-                <a
-                  href={`mailto:${EMAIL}`}
-                  className="underline underline-offset-4"
-                >
-                  {EMAIL}
-                </a>
+                {email ? (
+                  <a
+                    href={`mailto:${email}`}
+                    className="underline underline-offset-4"
+                  >
+                    {email}
+                  </a>
+                ) : (
+                  '—'
+                )}
               </p>
             </div>
 
@@ -62,11 +73,13 @@ export default function Location() {
                 Hours
               </h4>
               <p style={{ color: 'var(--muted)' }}>
-                Sun–Thu: 5:00pm–1:00am
-                <br />
-                Fri–Sat: 5:00pm–2:00am
-                <br />
-                Mon: Closed
+                {hours?.length
+                  ? hours.map((h) => (
+                      <span key={h.days + h.time} className="block">
+                        {h.days}: {h.time}
+                      </span>
+                    ))
+                  : '—'}
               </p>
             </div>
           </div>
