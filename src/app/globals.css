@@ -140,3 +140,9 @@ h6 {
   border: 1px solid rgba(201, 163, 90, 0.25); /* brass hint */
   border-radius: 9999px;
 }
+.font-begum {
+  font-family: var(--font-begum), ui-serif, Georgia, serif;
+}
+.font-mikado {
+  font-family: var(--font-mikado), ui-sans-serif, system-ui, sans-serif;
+}
