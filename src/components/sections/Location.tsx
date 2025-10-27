@@ -8,6 +8,7 @@ type Hour = { days: string; time: string };
 type Settings = {
   address?: string | null;
   email?: string | null;
+  phone?: string | null;
   hours?: Hour[] | null;
 };
 
@@ -19,6 +20,7 @@ export default async function Location() {
 
   const address = s?.address?.trim() || '';
   const email = s?.email?.trim() || '';
+  const phone = s?.phone?.trim() || '';
   const hours = s?.hours || [];
 
   return (
@@ -54,18 +56,26 @@ export default async function Location() {
               <h4 className="text-lg" style={{ color: 'var(--text)' }}>
                 Contact
               </h4>
-              <p style={{ color: 'var(--muted)' }}>
+              <div style={{ color: 'var(--muted)' }} className="space-y-1">
                 {email ? (
                   <a
                     href={`mailto:${email}`}
-                    className="underline underline-offset-4"
+                    className="block underline underline-offset-4"
                   >
                     {email}
                   </a>
                 ) : (
-                  '—'
+                  <span>—</span>
                 )}
-              </p>
+                {phone && (
+                  <a
+                    href={`tel:${phone.replace(/\s+/g, '')}`}
+                    className="block underline underline-offset-4"
+                  >
+                    {phone}
+                  </a>
+                )}
+              </div>
             </div>
 
             <div>
