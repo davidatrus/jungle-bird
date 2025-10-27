@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { begumSemiBold, mikadoBold } from './fonts';
 
 export const revalidate = 60;
 
@@ -19,7 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${begumSemiBold.variable} ${mikadoBold.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
