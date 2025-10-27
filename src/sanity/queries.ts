@@ -9,6 +9,7 @@ export const qMenu = `*[_type=="menu"][0]{
 export const qSettings = `*[_type=="settings"][0]{
   address,
   email,
+  phone,
   hours[]{days, time},
   social{facebook, instagram, tiktok, snapchat},
   openTableUrl

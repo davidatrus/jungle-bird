@@ -8,6 +8,7 @@ type Hour = { days: string; time: string };
 type Settings = {
   address?: string;
   email?: string;
+  phone?: string;
   hours?: Hour[];
 };
 type Faq = { question: string; answer: string };
@@ -20,6 +21,7 @@ export default async function ContactPage() {
 
   const address = settings?.address || 'Address coming soon.';
   const email = settings?.email || 'info@example.com';
+  const phone = settings?.phone || '';
 
   return (
     <div className="space-y-10">
@@ -48,6 +50,20 @@ export default async function ContactPage() {
               </a>
             </p>
           </div>
+
+          {phone && (
+            <div>
+              <h2 className="font-display text-lg">PHONE</h2>
+              <p>
+                <a
+                  className="underline underline-offset-4 hover:opacity-90"
+                  href={`tel:${phone.replace(/\s+/g, '')}`}
+                >
+                  {phone}
+                </a>
+              </p>
+            </div>
+          )}
 
           <div>
             <h2 className="font-display text-lg">HOURS</h2>

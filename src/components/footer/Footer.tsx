@@ -15,6 +15,7 @@ type Social = {
 type Settings = {
   address?: string;
   email?: string;
+  phone?: string;
   hours?: Hour[];
   social?: Social;
   openTableUrl?: string;
@@ -48,18 +49,26 @@ export default async function Footer() {
           >
             Contact
           </h5>
-          <p style={{ color: 'var(--text)' }}>
+          <div style={{ color: 'var(--text)' }} className="space-y-1">
             {s?.email ? (
               <a
-                className="underline underline-offset-4"
+                className="block underline underline-offset-4"
                 href={`mailto:${s.email}`}
               >
                 {s.email}
               </a>
             ) : (
-              '—'
+              <span>—</span>
             )}
-          </p>
+            {s?.phone && (
+              <a
+                className="block underline underline-offset-4"
+                href={`tel:${s.phone.replace(/\s+/g, '')}`}
+              >
+                {s.phone}
+              </a>
+            )}
+          </div>
         </div>
 
         <div>

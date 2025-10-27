@@ -8,6 +8,20 @@ export default defineType({
     defineField({name: 'address', type: 'string', title: 'Address'}),
     defineField({name: 'email', type: 'string', title: 'Email'}),
     defineField({
+      name: 'phone',
+      type: 'string',
+      title: 'Phone',
+      description: 'Main phone number shown on Contact/Find Us/Footer',
+      validation: (Rule) =>
+        Rule.custom((val: string | undefined) => {
+          if (!val) return true // allow empty (optional field)
+          return /^[0-9+().\-\s]{7,20}$/.test(val)
+            ? true
+            : 'Use digits and + (e.g., +1 (403) 555-0123)'
+        }).warning(),
+    }),
+
+    defineField({
       name: 'hours',
       type: 'array',
       title: 'Hours',
