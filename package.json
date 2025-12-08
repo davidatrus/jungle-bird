@@ -14,8 +14,9 @@
     "@sanity/image-url": "1.2.0",
     "groq": "3.99.0",
     "next": "15.5.7",
-    "react": "19.1.2",
-    "react-dom": "19.1.2"
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "sanity": "^4.20.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
