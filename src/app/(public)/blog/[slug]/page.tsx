@@ -11,6 +11,18 @@ const getSiblings = (slug: string) => {
     next: i < posts.length - 1 ? posts[i + 1] : null,
   };
 };
+// very small helper: turn **text** into <strong>text</strong>
+const renderInline = (text: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, idx) => {
+    const match = part.match(/^\*\*(.+)\*\*$/);
+    if (match) {
+      return <strong key={idx}>{match[1]}</strong>;
+    }
+    return <span key={idx}>{part}</span>;
+  });
+};
 
 // optional SEO
 export async function generateMetadata({
@@ -80,11 +92,65 @@ export default async function PostPage({
 
       {/* Body */}
       <section className="not-prose font-ui space-y-5 text-[15px] leading-7 md:text-[16px] md:leading-8">
-        {paras.map((t, i) => (
-          <p key={i} style={{ color: 'var(--text)' }}>
-            {t}
-          </p>
-        ))}
+        {paras.map((t, i) => {
+          const trimmed = t.trim();
+
+          // Lines like "1. Nutty Tourist"
+          const isNumberedHeading = /^[0-9]+\.\s/.test(trimmed);
+
+          // Lines like "(Signature Cave Cocktails – Page 2)"
+          const isMetaLine = /^\(.+\)$/.test(trimmed);
+
+          // Generic short, punctuation-free headings
+          const isSimpleHeading =
+            trimmed.length < 80 && !/[.?!]/.test(trimmed) && !isMetaLine;
+
+          // BLOG 1 CTA line – bold the second half only
+          const ctaPrefix = 'Ready to see it for yourself? ';
+          if (trimmed.startsWith(ctaPrefix)) {
+            const rest = trimmed.slice(ctaPrefix.length);
+            return (
+              <p key={i} style={{ color: 'var(--text)' }}>
+                {ctaPrefix}
+                <strong>{rest}</strong>
+              </p>
+            );
+          }
+
+          // Main headings (drink names, closing title, etc.)
+          if (isNumberedHeading || isSimpleHeading) {
+            return (
+              <h2
+                key={i}
+                className="font-display mt-6 text-xl font-semibold md:text-2xl"
+                style={{ color: 'var(--text)' }}
+              >
+                {renderInline(trimmed)}
+              </h2>
+            );
+          }
+
+          // Meta line under each drink name – smaller + italic
+          if (isMetaLine) {
+            const inner = trimmed.replace(/^\(|\)$/g, '');
+            return (
+              <p
+                key={i}
+                className="text-sm italic opacity-75"
+                style={{ color: 'var(--text)' }}
+              >
+                {renderInline(inner)}
+              </p>
+            );
+          }
+
+          // Default paragraph
+          return (
+            <p key={i} style={{ color: 'var(--text)' }}>
+              {renderInline(trimmed)}
+            </p>
+          );
+        })}
       </section>
 
       {/* Prev / Next */}
