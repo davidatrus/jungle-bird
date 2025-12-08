@@ -5,8 +5,14 @@ import { begumSemiBold, mikadoBold } from './fonts';
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: 'Jungle Bird',
-  description: 'Tiki-Cave & Lounge. Welcome to the Jungle',
+  // Used for canonical + OG URLs
+  metadataBase: new URL('https://www.junglebirdtikiyyc.com'),
+  title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17th Ave',
+  description:
+    "Discover Jungle Bird, Calgary's Tiki-Cave lounge on 17th Ave. Rum forward cocktails, fire lit ambiance, and a tropical escape in the heart of the Beltline.",
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/images/logo/icon.png', // browser tab
     shortcut: '/images/logo/icon.png',

@@ -44,7 +44,7 @@ export default function NavbarClient({
         >
           <Image
             src="/images/logo/icon.png"
-            alt=""
+            alt="Jungle Bird Tiki Lounge YYC logo"
             width={28}
             height={28}
             priority

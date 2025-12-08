@@ -1,7 +1,6 @@
 // src/components/sections/Hero.client.tsx
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import SocialIconsMask from '@/components/shared/SocialIconsMask';
@@ -20,9 +19,6 @@ type Props = {
 
 export default function HeroClient({ social, openTableUrl }: Props) {
   const vidRef = useRef<HTMLVideoElement>(null);
-
-  // 🔧 Toggle this later if you want the bird back
-  const SHOW_ICON = false;
 
   useEffect(() => {
     const v = vidRef.current;
@@ -84,21 +80,6 @@ export default function HeroClient({ social, openTableUrl }: Props) {
 
       {/* Center stack */}
       <div className="relative z-10 mx-auto flex flex-col items-center gap-[clamp(10px,1.4vw,16px)] px-6 text-center">
-        {/* ICON (hidden via flag, kept for later) */}
-        {SHOW_ICON && (
-          <div className="mx-auto h-[clamp(72px,10vw,144px)] w-[clamp(72px,10vw,144px)]">
-            <Image
-              src="/images/logo/logo-icon.png"
-              alt="Jungle Bird icon"
-              width={512}
-              height={512}
-              priority
-              quality={95}
-              className="h-full w-full object-contain drop-shadow-2xl"
-            />
-          </div>
-        )}
-
         {/* Big Title */}
         <h1 className="font-begum text-[clamp(44px,6.6vw,96px)] leading-none tracking-tight text-white [text-shadow:0_6px_30px_rgba(0,0,0,.55)]">
           JUNGLE BIRD
