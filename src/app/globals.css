@@ -146,3 +146,48 @@ h6 {
 .font-mikado {
   font-family: var(--font-mikado), ui-sans-serif, system-ui, sans-serif;
 }
+/* Navbar glass background */
+.nav-glass {
+  border-color: var(--line);
+  background: rgba(27, 22, 18, 0.92);
+  backdrop-filter: blur(6px);
+}
+
+/* Navbar text / line colors */
+.text-nav {
+  color: var(--text);
+}
+
+.border-nav-line {
+  border-color: var(--line);
+}
+
+/* CTA buttons */
+.nav-cta-btn {
+  background: var(--cta);
+  color: #1b1612;
+}
+
+.nav-cta-btn-disabled {
+  border-color: var(--line);
+  color: #1b1612;
+  background: transparent;
+}
+
+/* Mobile nav background */
+.mobile-nav {
+  background: rgba(27, 22, 18, 0.97);
+}
+
+/* Remove blue tap highlight on mobile */
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
+.hero-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(27, 22, 18, 0.84) 0%,
+    rgba(27, 22, 18, 0.9) 50%
+  );
+  isolation: isolate;
+}

@@ -40,7 +40,6 @@ export default function GalleryGrid({
               height={1200}
               className={`${imgClass} w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]`}
               priority={i < 3}
-              // no B/W; keep things warm/neutral
               style={{ filter: 'sepia(0) saturate(1) brightness(1)' }}
             />
 

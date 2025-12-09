@@ -27,14 +27,7 @@ export default function NavbarClient({
   const hasOpenTable = !!openTableUrl?.trim();
 
   return (
-    <header
-      className="sticky top-0 z-40 border-b"
-      style={{
-        borderColor: 'var(--line)',
-        background: 'rgba(27,22,18,.92)',
-        backdropFilter: 'blur(6px)',
-      }}
-    >
+    <header className="nav-glass sticky top-0 z-40 border-b">
       <nav className="mx-auto grid h-12 max-w-7xl grid-cols-[auto_1fr_auto] items-center px-4 md:h-14 lg:px-6">
         {/* Brand */}
         <Link
@@ -47,31 +40,29 @@ export default function NavbarClient({
             alt="Jungle Bird Tiki Lounge YYC logo"
             width={28}
             height={28}
-            priority
             className="block h-8 w-8 md:h-10 md:w-10"
+            loading="lazy"
           />
         </Link>
 
         {/* Center links (desktop) */}
-        <ul
-          className="hidden items-center justify-center gap-6 text-[12px] md:flex xl:gap-8"
-          style={{ color: 'var(--text)' }}
-        >
-          {links.map((l) => (
-            <li key={l.href}>
-              <Link
-                className={linkClass}
-                href={l.href}
-                style={
-                  pathname === l.href
-                    ? { borderBottom: '2px solid var(--line)' }
-                    : undefined
-                }
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
+        <ul className="text-nav hidden items-center justify-center gap-6 text-[12px] md:flex xl:gap-8">
+          {links.map((l) => {
+            const active = pathname === l.href;
+            return (
+              <li key={l.href}>
+                <Link
+                  className={`${linkClass} ${
+                    active ? 'border-nav-line border-b-2' : ''
+                  }`}
+                  href={l.href}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         {/* Right: Book Now (desktop) + Chevron (mobile) */}
@@ -82,21 +73,15 @@ export default function NavbarClient({
                 href={openTableUrl!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-pop btn-shadow brass-border rounded-full px-4 py-2 text-[12px] font-semibold"
-                style={{ background: 'var(--cta)', color: '#1B1612' }}
+                className="btn-pop btn-shadow brass-border nav-cta-btn rounded-full px-4 py-2 text-[12px] font-semibold"
               >
                 Book Now
               </a>
             ) : (
               <button
-                className="brass-border cursor-not-allowed rounded-full px-4 py-2 text-[12px] font-semibold opacity-60"
+                className="brass-border nav-cta-btn-disabled rounded-full px-4 py-2 text-[12px] font-semibold opacity-60"
                 aria-disabled="true"
                 title="Add your OpenTable URL in Site Settings to enable this"
-                style={{
-                  borderColor: 'var(--line)',
-                  color: '#1B1612',
-                  background: 'transparent',
-                }}
               >
                 Book Now
               </button>
@@ -110,11 +95,7 @@ export default function NavbarClient({
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((s) => !s)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--line)] md:hidden"
-            style={{
-              color: 'var(--text)',
-              WebkitTapHighlightColor: 'transparent',
-            }}
+            className="text-nav no-tap-highlight inline-flex h-8 w-8 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--line)] md:hidden"
           >
             <svg
               viewBox="0 0 24 24"
@@ -123,7 +104,9 @@ export default function NavbarClient({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`h-5 w-5 transition-transform duration-200 ${open ? 'rotate-180' : 'rotate-0'}`}
+              className={`h-5 w-5 transition-transform duration-200 ${
+                open ? 'rotate-180' : 'rotate-0'
+              }`}
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
@@ -134,17 +117,11 @@ export default function NavbarClient({
       {/* Mobile dropdown */}
       <div
         id="mobile-nav"
-        className="overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-[max-height] duration-250 ease-in-out md:hidden"
-        style={{
-          maxHeight: open ? '280px' : '0px',
-          background: 'rgba(27,22,18,.97)',
-          borderTop: open ? '1px solid var(--line)' : '0',
-        }}
+        className={`mobile-nav overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-[max-height] duration-250 ease-in-out md:hidden ${
+          open ? 'border-nav-line max-h-[280px] border-t' : 'max-h-0 border-t-0'
+        }`}
       >
-        <ul
-          className="space-y-1 px-4 pt-3 pb-3"
-          style={{ color: 'var(--text)' }}
-        >
+        <ul className="text-nav space-y-1 px-4 pt-3 pb-3">
           {links.map((l) => {
             const active = pathname === l.href;
             return (
@@ -155,8 +132,9 @@ export default function NavbarClient({
                   aria-current={active ? 'page' : undefined}
                 >
                   <span
-                    className={active ? 'inline-block border-b-2' : ''}
-                    style={active ? { borderColor: 'var(--line)' } : undefined}
+                    className={
+                      active ? 'border-nav-line inline-block border-b-2' : ''
+                    }
                   >
                     {l.label}
                   </span>
@@ -170,21 +148,15 @@ export default function NavbarClient({
                 href={openTableUrl!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-pop brass-border inline-block w-full rounded-full px-4 py-2 text-center text-sm font-semibold"
-                style={{ background: 'var(--cta)', color: '#1B1612' }}
+                className="btn-pop brass-border nav-cta-btn inline-block w-full rounded-full px-4 py-2 text-center text-sm font-semibold"
               >
                 Book Now
               </a>
             ) : (
               <button
-                className="brass-border inline-block w-full cursor-not-allowed rounded-full px-4 py-2 text-center text-sm font-semibold opacity-60"
+                className="brass-border nav-cta-btn-disabled inline-block w-full cursor-not-allowed rounded-full px-4 py-2 text-center text-sm font-semibold opacity-60"
                 aria-disabled="true"
                 title="Add your OpenTable URL in Site Settings to enable this"
-                style={{
-                  borderColor: 'var(--line)',
-                  color: '#1B1612',
-                  background: 'transparent',
-                }}
               >
                 Book Now
               </button>
