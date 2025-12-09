@@ -57,15 +57,7 @@ export default function HeroClient({ social, openTableUrl }: Props) {
         <source src="/video/hero_loop.mp4" type="video/mp4" />
       </video>
 
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(27,22,18,.84) 0%, rgba(27,22,18,.90) 50%)',
-          isolation: 'isolate',
-        }}
-        aria-hidden="true"
-      />
+      <div className="hero-overlay absolute inset-0" aria-hidden="true" />
 
       {/* Top social bar */}
       <div className="absolute inset-x-0 top-4 z-10 flex justify-center">

@@ -5,7 +5,6 @@ import { begumSemiBold, mikadoBold } from './fonts';
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  // Used for canonical + OG URLs
   metadataBase: new URL('https://www.junglebirdtikiyyc.com'),
   title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17th Ave',
   description:
@@ -14,9 +13,8 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   icons: {
-    icon: '/images/logo/icon.png', // browser tab
-    shortcut: '/images/logo/icon.png',
-    apple: '/images/logo/icon.png', // iOS home screen
+    icon: [{ url: '/favicon.ico', type: 'image/x-icon' }],
+    apple: '/images/logo/icon.png',
   },
 };
 
