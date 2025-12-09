@@ -16,6 +16,30 @@ export const metadata: Metadata = {
     icon: [{ url: '/favicon.ico', type: 'image/x-icon' }],
     apple: '/images/logo/icon.png',
   },
+  openGraph: {
+    type: 'website',
+    url: 'https://www.junglebirdtikiyyc.com/',
+    title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17th Ave',
+    description:
+      "Discover Jungle Bird, Calgary's tiki-cave lounge on 17th Ave. Rum-forward cocktails, fire-lit ambiance, and a tropical escape in the heart of the Beltline.",
+    siteName: 'Jungle Bird Tiki Lounge YYC',
+    images: [
+      {
+        url: '/images/og/jungle-bird-og.webp',
+        width: 1200,
+        height: 630,
+        alt: 'Jungle Bird Tiki Lounge YYC — cocktails & rum on 17th Ave in Calgary',
+      },
+    ],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17th Ave',
+    description:
+      "Discover Jungle Bird, Calgary's tiki-cave lounge on 17th Ave. Rum-forward cocktails, fire-lit ambiance, and a tropical escape in the heart of the Beltline.",
+    images: ['/images/og/jungle-bird-og.webp'],
+  },
 };
 
 export default function RootLayout({
