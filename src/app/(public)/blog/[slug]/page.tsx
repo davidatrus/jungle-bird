@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { posts } from '@/data/posts';
 
 // simple helpers
@@ -24,18 +25,78 @@ const renderInline = (text: string) => {
   });
 };
 
-// optional SEO
+// SEO + social previews per blog post
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
-}) {
+}): Promise<Metadata> {
   const { slug } = await params;
   const p = getPost(slug);
-  if (!p) return {};
+
+  const fallbackTitle = 'Jungle Bird Blog | Jungle Bird Tiki Lounge Calgary';
+  const fallbackDescription =
+    "Stories from Jungle Bird, Calgary's tiki-cave lounge on 17th Ave.";
+
+  // If the slug doesn't match any post, still return sensible metadata
+  if (!p) {
+    return {
+      title: fallbackTitle,
+      description: fallbackDescription,
+      openGraph: {
+        type: 'article',
+        url: `https://www.junglebirdtikiyyc.com/blog/${slug}`,
+        title: fallbackTitle,
+        description: fallbackDescription,
+        images: [
+          {
+            url: '/images/og/jungle-bird-og.webp',
+            width: 1200,
+            height: 630,
+            alt: 'Jungle Bird Tiki Lounge YYC — cocktails & rum on 17th Ave in Calgary',
+          },
+        ],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: fallbackTitle,
+        description: fallbackDescription,
+        images: ['/images/og/jungle-bird-og.webp'],
+      },
+    };
+  }
+
+  const canonicalUrl = `https://www.junglebirdtikiyyc.com/blog/${p.slug}`;
+  const title = `${p.title} • Jungle Bird`;
+  const description =
+    p.excerpt ??
+    "Discover Jungle Bird, Calgary's tiki-cave lounge on 17th Ave.";
+  const ogImageUrl = p.image ?? '/images/og/jungle-bird-og.webp';
+
   return {
-    title: `${p.title} • Jungle Bird`,
-    description: p.excerpt ?? 'Article from Jungle Bird',
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      type: 'article',
+      url: canonicalUrl,
+      title,
+      description,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: p.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
