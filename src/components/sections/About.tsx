@@ -8,7 +8,7 @@ export default function About() {
         {/* Image */}
         <div className="overflow-hidden rounded-3xl ring-1 ring-[var(--ring)]">
           <img
-            src="/images/misc/interior.jpg"
+            src="/images/misc/interior.webp"
             alt="Warm, ember-lit lounge interior"
             className="h-full w-full object-cover sepia"
           />
