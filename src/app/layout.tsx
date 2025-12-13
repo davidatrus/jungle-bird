@@ -6,24 +6,23 @@ import { Analytics } from '@vercel/analytics/react';
 const localBusinessJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BarOrPub',
+  '@id': 'https://www.junglebirdtikiyyc.com/#localbusiness',
   name: 'Jungle Bird Tiki Lounge',
-  description:
-    "Discover Jungle Bird, Calgary's tiki-cave lounge on 17th Ave. Rum-forward cocktails, fire-lit ambiance, and a tropical escape in the heart of the Beltline.",
-  url: 'https://www.junglebirdtikiyyc.com/',
-  image: 'https://www.junglebirdtikiyyc.com/images/og/jungle-bird-og.webp',
+  url: 'https://www.junglebirdtikiyyc.com',
+  telephone: '+1-825-982-8454',
+  priceRange: '$$',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: '725A 17 Ave SW',
+    streetAddress: '725a 17 Ave SW',
     addressLocality: 'Calgary',
     addressRegion: 'AB',
-    postalCode: 'T2S 0B7',
+    postalCode: 'T2S 0B6',
     addressCountry: 'CA',
   },
-  // Hours: Sun–Thu 5pm–1am, Fri–Sat 5pm–2am, Monday closed
   openingHoursSpecification: [
     {
       '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Sunday', 'Tuesday', 'Wednesday', 'Thursday'],
+      dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Sunday'],
       opens: '17:00',
       closes: '01:00',
     },
@@ -33,7 +32,10 @@ const localBusinessJsonLd = {
       opens: '17:00',
       closes: '02:00',
     },
-    // Monday is closed, so we simply omit it from the schedule
+  ],
+  sameAs: [
+    'https://www.instagram.com/junglebirdtikiyyc',
+    'https://share.google/3PevWedo437AFUepo',
   ],
 };
 

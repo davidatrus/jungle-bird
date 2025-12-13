@@ -1,0 +1,9 @@
+# llms.txt for Jungle Bird Tiki Lounge
+User-agent: *
+Allow: /
+
+# Preferred canonical domain
+Canonical: https://www.junglebirdtikiyyc.com
+
+# Content notes
+Notes: This site represents Jungle Bird Tiki Lounge, a cocktail and rum-focused tiki bar located on 17th Ave SW in Calgary, Alberta.

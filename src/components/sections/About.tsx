@@ -9,7 +9,7 @@ export default function About() {
         <div className="overflow-hidden rounded-3xl ring-1 ring-[var(--ring)]">
           <img
             src="/images/misc/interior.webp"
-            alt="Warm, ember-lit lounge interior"
+            alt="Inside Jungle Bird Tiki Lounge on 17th Ave Calgary with glowing tiki bar, bamboo textures, and tropical rum display"
             className="h-full w-full object-cover sepia"
           />
         </div>
