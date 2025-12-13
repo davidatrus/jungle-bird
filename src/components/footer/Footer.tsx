@@ -18,7 +18,6 @@ type Settings = {
   phone?: string;
   hours?: Hour[];
   social?: Social;
-  openTableUrl?: string;
 };
 
 export default async function Footer() {

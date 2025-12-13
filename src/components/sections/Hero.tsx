@@ -11,15 +11,9 @@ type Settings = {
     tiktok?: string;
     snapchat?: string;
   };
-  openTableUrl?: string;
 };
 
 export default async function Hero() {
   const s = await client.fetch<Settings>(qSettings).catch(() => null);
-  return (
-    <HeroClient
-      social={s?.social ?? undefined}
-      openTableUrl={s?.openTableUrl ?? undefined}
-    />
-  );
+  return <HeroClient social={s?.social ?? undefined} />;
 }

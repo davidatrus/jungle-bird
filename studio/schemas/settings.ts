@@ -46,6 +46,5 @@ export default defineType({
         {name: 'snapchat', type: 'url'},
       ],
     }),
-    defineField({name: 'openTableUrl', type: 'url', title: 'OpenTable URL'}),
   ],
 })
