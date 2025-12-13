@@ -11,6 +11,11 @@ const localBusinessJsonLd = {
   url: 'https://www.junglebirdtikiyyc.com',
   telephone: '+1-825-982-8454',
   priceRange: '$$',
+
+  image: 'https://www.junglebirdtikiyyc.com/images/og/jungle-bird-og.webp',
+
+  servesCuisine: ['Tiki', 'Mexican', 'Bar Food'],
+
   address: {
     '@type': 'PostalAddress',
     streetAddress: '725a 17 Ave SW',
