@@ -1,6 +1,4 @@
 // src/lib/constants.ts
-export const OPENTABLE_URL =
-  'https://www.opentable.com/r/your-restaurant-placeholder'; // placeholder
 
 export const ADDRESS = '725A 17th Ave SW, Calgary, AB';
 export const EMAIL = 'junglebirdtikiyyc@gmail.com';

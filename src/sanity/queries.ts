@@ -11,8 +11,7 @@ export const qSettings = `*[_type=="settings"][0]{
   email,
   phone,
   hours[]{days, time},
-  social{facebook, instagram, tiktok, snapchat},
-  openTableUrl
+  social{facebook, instagram, tiktok, snapchat}
 }`;
 
 export const qGallery = `*[_type=="galleryImage"]|order(order asc){

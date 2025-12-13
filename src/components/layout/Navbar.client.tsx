@@ -1,9 +1,9 @@
-//  (CLIENT)
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import ReservationModal from '@/components/shared/ReservationModal';
 
 const links = [
   { href: '/menu', label: 'Menu' },
@@ -11,25 +11,22 @@ const links = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export default function NavbarClient({
-  openTableUrl,
-}: {
-  openTableUrl?: string | null;
-}) {
+export default function NavbarClient() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+    setBookingOpen(false);
+  }, [pathname]);
 
   const linkClass =
     'px-2 py-1 text-[12px] tracking-[0.12em] uppercase hover:opacity-80';
 
-  const hasOpenTable = !!openTableUrl?.trim();
-
   return (
     <header className="nav-glass sticky top-0 z-40 border-b">
       <nav className="mx-auto grid h-12 max-w-7xl grid-cols-[auto_1fr_auto] items-center px-4 md:h-14 lg:px-6">
-        {/* Brand */}
         <Link
           href="/"
           aria-label="Jungle Bird home"
@@ -45,7 +42,6 @@ export default function NavbarClient({
           />
         </Link>
 
-        {/* Center links (desktop) */}
         <ul className="text-nav hidden items-center justify-center gap-6 text-[12px] md:flex xl:gap-8">
           {links.map((l) => {
             const active = pathname === l.href;
@@ -65,30 +61,17 @@ export default function NavbarClient({
           })}
         </ul>
 
-        {/* Right: Book Now (desktop) + Chevron (mobile) */}
         <div className="flex items-center gap-2 justify-self-end">
           <span className="hidden md:inline-flex">
-            {hasOpenTable ? (
-              <a
-                href={openTableUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-pop btn-shadow brass-border nav-cta-btn rounded-full px-4 py-2 text-[12px] font-semibold"
-              >
-                Book Now
-              </a>
-            ) : (
-              <button
-                className="brass-border nav-cta-btn-disabled rounded-full px-4 py-2 text-[12px] font-semibold opacity-60"
-                aria-disabled="true"
-                title="Add your OpenTable URL in Site Settings to enable this"
-              >
-                Book Now
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setBookingOpen(true)}
+              className="btn-pop btn-shadow brass-border nav-cta-btn rounded-full px-4 py-2 text-[12px] font-semibold"
+            >
+              Book Now
+            </button>
           </span>
 
-          {/* Chevron toggle (mobile) */}
           <button
             type="button"
             aria-label={open ? 'Close menu' : 'Open menu'}
@@ -114,7 +97,6 @@ export default function NavbarClient({
         </div>
       </nav>
 
-      {/* Mobile dropdown */}
       <div
         id="mobile-nav"
         className={`mobile-nav overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-[max-height] duration-250 ease-in-out md:hidden ${
@@ -142,28 +124,27 @@ export default function NavbarClient({
               </li>
             );
           })}
+
           <li className="pt-2">
-            {hasOpenTable ? (
-              <a
-                href={openTableUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-pop brass-border nav-cta-btn inline-block w-full rounded-full px-4 py-2 text-center text-sm font-semibold"
-              >
-                Book Now
-              </a>
-            ) : (
-              <button
-                className="brass-border nav-cta-btn-disabled inline-block w-full cursor-not-allowed rounded-full px-4 py-2 text-center text-sm font-semibold opacity-60"
-                aria-disabled="true"
-                title="Add your OpenTable URL in Site Settings to enable this"
-              >
-                Book Now
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setBookingOpen(true);
+              }}
+              className="btn-pop brass-border nav-cta-btn inline-block w-full rounded-full px-4 py-2 text-center text-sm font-semibold"
+            >
+              Book Now
+            </button>
           </li>
         </ul>
       </div>
+
+      {/* Render the shared modal ONCE */}
+      <ReservationModal
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+      />
     </header>
   );
 }
