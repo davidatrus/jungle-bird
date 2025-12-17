@@ -52,10 +52,22 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
-  icons: {
-    icon: [{ url: '/favicon.ico', type: 'image/x-icon' }],
-    apple: '/images/logo/icon.png',
+
+  manifest: '/manifest.json',
+
+  appleWebApp: {
+    title: 'Jungle Bird',
   },
+
+  icons: {
+    icon: [
+      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/icon1.png', type: 'image/png' },
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-icon.png' }],
+  },
+
   openGraph: {
     type: 'website',
     url: 'https://www.junglebirdtikiyyc.com/',
