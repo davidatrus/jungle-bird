@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
-
+//testing
 function requireAdmin(req: Request) {
   // Preferred: Bearer token
   const expectedBearer = process.env.ADMIN_SCAN_TOKEN;
