@@ -43,7 +43,7 @@ function getBaseUrl() {
   // prod:  SITE_URL=https://junglebirdtikiyyc.com
   const base =
     process.env.SITE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL || // ok as fallback, but SITE_URL is better for server
+    process.env.TICKETS_BASE_URL || // ok as fallback, but SITE_URL is better for server
     'http://localhost:3000';
 
   return base.replace(/\/$/, '');
