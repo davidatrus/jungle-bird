@@ -8,8 +8,8 @@ export const runtime = 'nodejs';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 type CheckoutBody = {
-  sanityEventId: string; // Sanity document _id for event
-  quantity: number; // must be >= min_per_order
+  sanityEventId: string;
+  quantity: number;
   buyerFirstName: string;
   buyerLastName: string;
   buyerEmail: string;
@@ -18,6 +18,8 @@ type CheckoutBody = {
 function isEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+const HOLD_TTL_MINUTES = 15;
 
 export async function POST(req: Request) {
   try {
@@ -57,22 +59,41 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1) Load event + its ticket type from DB.
-    // For MVP, each event has 1 ticket type (General Admission).
+    const origin = req.headers.get('origin');
+    if (!origin) {
+      return NextResponse.json(
+        { error: 'Missing Origin header.' },
+        { status: 400 },
+      );
+    }
+
     const client = await pool.connect();
     try {
       await client.query('begin');
 
-      // Event must exist in DB. (We will add an upsert sync later from Sanity.)
+      // Lock the ticket type row so capacity checks are serialized.
       const eventRes = await client.query(
         `
-        select e.id as event_id, e.title, e.sanity_slug, e.status, e.starts_at,
-               tt.id as ticket_type_id, tt.name as ticket_name, tt.currency,
-               tt.unit_amount_cents, tt.capacity, tt.sold_count, tt.min_per_order, tt.max_per_order, tt.sales_end_at
+        select
+          e.id as event_id,
+          e.title,
+          e.sanity_slug,
+          e.status,
+          e.starts_at,
+          tt.id as ticket_type_id,
+          tt.name as ticket_name,
+          tt.currency,
+          tt.unit_amount_cents,
+          tt.capacity,
+          tt.sold_count,
+          tt.min_per_order,
+          tt.max_per_order,
+          tt.sales_end_at
         from public.events e
         join public.ticket_types tt on tt.event_id = e.id
         where e.sanity_event_id = $1
         limit 1
+        for update of tt
         `,
         [sanityEventId],
       );
@@ -106,7 +127,7 @@ export async function POST(req: Request) {
         );
       }
 
-      const minPerOrder = Number(row.min_per_order ?? 2);
+      const minPerOrder = Number(row.min_per_order ?? 1);
       const maxPerOrder = row.max_per_order ? Number(row.max_per_order) : null;
 
       if (quantity < minPerOrder) {
@@ -124,32 +145,35 @@ export async function POST(req: Request) {
         );
       }
 
+      // Active holds that have not expired yet.
+      const holdsRes = await client.query(
+        `
+        select coalesce(sum(qty), 0) as held_active
+        from public.inventory_holds
+        where ticket_type_id = $1
+          and status = 'active'
+          and expires_at > now()
+        `,
+        [row.ticket_type_id],
+      );
+
       const capacity = Number(row.capacity);
       const sold = Number(row.sold_count);
-      const remaining = capacity - sold;
+      const heldActive = Number(holdsRes.rows[0]?.held_active ?? 0);
+      const remaining = capacity - sold - heldActive;
 
       if (quantity > remaining) {
         await client.query('rollback');
         return NextResponse.json(
-          { error: `Only ${remaining} tickets remaining.` },
-          { status: 400 },
-        );
-      }
-
-      // 2) Create Stripe Checkout Session (no DB writes yet besides maybe a reservation in v2).
-      const origin = req.headers.get('origin');
-      if (!origin) {
-        await client.query('rollback');
-        return NextResponse.json(
-          { error: 'Missing Origin header.' },
+          { error: `Only ${Math.max(0, remaining)} tickets remaining.` },
           { status: 400 },
         );
       }
 
       const unitAmount = Number(row.unit_amount_cents);
-
-      // subtotal/fees are finalized after payment, but we store what we expect.
       const subtotalCents = unitAmount * quantity;
+
+      // Create Stripe Checkout session while we still hold the lock.
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -159,7 +183,7 @@ export async function POST(req: Request) {
             price_data: {
               currency: row.currency ?? 'cad',
               product_data: {
-                name: `${row.title} — ${row.ticket_name}`,
+                name: `${row.title} - ${row.ticket_name}`,
               },
               unit_amount: unitAmount,
             },
@@ -185,6 +209,28 @@ export async function POST(req: Request) {
           },
         },
       });
+
+      // Create the hold tied to this session id.
+      await client.query(
+        `
+        insert into public.inventory_holds (
+          event_id,
+          ticket_type_id,
+          stripe_checkout_session_id,
+          qty,
+          expires_at,
+          status
+        )
+        values ($1, $2, $3, $4, now() + ($5 || ' minutes')::interval, 'active')
+        `,
+        [
+          row.event_id,
+          row.ticket_type_id,
+          session.id,
+          quantity,
+          String(HOLD_TTL_MINUTES),
+        ],
+      );
 
       await client.query('commit');
 
