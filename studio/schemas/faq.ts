@@ -1,3 +1,4 @@
+//studio/schemas/faq.ts
 import {defineType, defineField} from 'sanity'
 
 export default defineType({
