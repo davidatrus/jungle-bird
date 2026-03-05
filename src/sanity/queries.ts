@@ -25,10 +25,11 @@ export const qFaq = `*[_type=="faq"]|order(order asc){
 // =======================
 // Events
 // =======================
-
 // List page: only show on_sale events publicly
-export const qEventsList = `
-*[_type == "event" && status == "on_sale" && venueKey == "jungle_bird"] | order(startsAt asc) {
+// Events list
+export const qEventsList = /* groq */ `
+*[_type == "event" && status in ["on_sale","ended"]]
+| order(startsAt asc) {
   _id,
   _createdAt,
   title,
@@ -39,14 +40,25 @@ export const qEventsList = `
   endsAt,
   shortDescription,
   isFeatured,
-  heroImage
+  heroImage,
+  ticketTypes[] {
+    _key,
+    name,
+    currency,
+    priceCents,
+    capacity,
+    minPerOrder,
+    maxPerOrder,
+    ticketsOnSaleAt,
+    salesEndAt
+  }
 }
 `;
 
-export const qEventBySlug = `
-*[_type == "event" && slug.current == $slug && venueKey == "jungle_bird"][0]{
+// Single event by slug
+export const qEventBySlug = /* groq */ `
+*[_type == "event" && slug.current == $slug][0]{
   _id,
-  _createdAt,
   title,
   "slug": slug.current,
   venueKey,
@@ -55,16 +67,22 @@ export const qEventBySlug = `
   endsAt,
   shortDescription,
   body,
-  isFeatured,
   heroImage,
-  gallery,
-  ticketTypes[]{
+
+  "gallery": gallery[]{
+    "image": @,
+    "caption": null
+  },
+
+  ticketTypes[] {
+    _key,
     name,
-    priceCents,
     currency,
+    priceCents,
     capacity,
     minPerOrder,
     maxPerOrder,
+    ticketsOnSaleAt,
     salesEndAt
   }
 }

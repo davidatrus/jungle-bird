@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/internal/release-expired-holds?token=Yyd1VW5WnnbK",
+      "path": "/api/internal/cron?token=Yyd1VW5WnnbK",
       "schedule": "*/5 * * * *"
     }
   ]

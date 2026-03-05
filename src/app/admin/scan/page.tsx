@@ -46,6 +46,11 @@ export default function AdminScanPage() {
   const codeRef = useRef<HTMLInputElement | null>(null);
   const videoWrapRef = useRef<HTMLDivElement | null>(null);
 
+  // --- Anti-spam locks ---
+  const lastCodeRef = useRef<string>('');
+  const cooldownUntilRef = useRef<number>(0);
+  const inFlightRef = useRef<boolean>(false);
+
   // Load token from localStorage
   useEffect(() => {
     try {
@@ -70,20 +75,24 @@ export default function AdminScanPage() {
 
   async function onScan(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    setLoading(true);
-    setResult(null);
+
+    const now = Date.now();
+    if (inFlightRef.current) return;
+    if (now < cooldownUntilRef.current) return;
 
     const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+
+    inFlightRef.current = true;
+    setLoading(true);
+    setResult(null);
 
     try {
       const res = await fetch('/api/admin/scan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // ✅ Bearer auth
           ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
-          // Optional back-compat if you still have ADMIN_SCAN_KEY set:
-          // "x-admin-key": adminToken,
         },
         body: JSON.stringify({
           code: trimmed,
@@ -98,10 +107,13 @@ export default function AdminScanPage() {
       setTimeout(() => codeRef.current?.focus(), 0);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Request failed';
-
       setResult({ status: 0, ok: false, error: message });
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
+
+      // Small cooldown after any scan request (prevents double submit)
+      cooldownUntilRef.current = Date.now() + 1200; // 1.2s
     }
   }
 
@@ -125,7 +137,6 @@ export default function AdminScanPage() {
     const reader = new BrowserMultiFormatReader();
     let stopped = false;
 
-    // This is what we stop on cleanup
     let controls: { stop: () => void } | null = null;
 
     const start = async () => {
@@ -146,7 +157,6 @@ export default function AdminScanPage() {
         video.style.border = '1px solid rgba(255,255,255,0.12)';
         container.appendChild(video);
 
-        // IMPORTANT: decodeFromVideoDevice returns "controls" (with stop())
         controls = await reader.decodeFromVideoDevice(
           preferred?.deviceId ?? undefined,
           video,
@@ -156,6 +166,9 @@ export default function AdminScanPage() {
             if (res) {
               const text = (res.getText() || '').trim();
               if (!text) return;
+
+              const now = Date.now();
+              if (now < cooldownUntilRef.current) return;
 
               // Accept either raw code OR a URL containing ?code=XXXX
               let found = text.toUpperCase();
@@ -168,15 +181,20 @@ export default function AdminScanPage() {
                 }
               } catch {}
 
+              // Ignore same code repeating while it stays in frame
+              if (found === lastCodeRef.current) return;
+
+              lastCodeRef.current = found;
               setCode(found);
 
+              // Start cooldown immediately so repeated decoder hits do nothing
+              cooldownUntilRef.current = now + 1500; // 1.5s grace period
+
               if (autoSubmit && adminToken) {
-                setTimeout(() => onScan(), 50);
+                setTimeout(() => onScan(), 0);
               }
             } else if (err) {
-              // zxing throws "not found" style errors constantly while searching.
-              // We ignore all decode errors here to avoid noisy logs.
-              // If you want, you can log non-search errors by checking err.name/message.
+              // Ignore decode errors while searching.
             }
           },
         );
@@ -350,6 +368,8 @@ export default function AdminScanPage() {
               onClick={() => {
                 setCode('');
                 setResult(null);
+                lastCodeRef.current = '';
+                cooldownUntilRef.current = 0;
                 setTimeout(() => codeRef.current?.focus(), 0);
               }}
               style={{
@@ -368,7 +388,6 @@ export default function AdminScanPage() {
           </div>
         </form>
 
-        {/* Camera preview */}
         {cameraOn && (
           <div style={{ marginTop: 14 }}>
             <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>
@@ -378,7 +397,6 @@ export default function AdminScanPage() {
           </div>
         )}
 
-        {/* Results */}
         {result && (
           <div
             style={{

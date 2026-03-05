@@ -1,3 +1,4 @@
+//src/app/api/sanity/events/upsert/route.ts
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { sanityAdminClient } from '@/sanity/adminClient';
@@ -224,9 +225,9 @@ export async function POST(req: Request) {
             sales_end_at
           )
           values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-          on conflict (event_id, name)
+          on conflict (event_id, sanity_ticket_type_id)
           do update set
-            sanity_ticket_type_id = excluded.sanity_ticket_type_id,
+            name = excluded.name,
             currency = excluded.currency,
             unit_amount_cents = excluded.unit_amount_cents,
             capacity = excluded.capacity,

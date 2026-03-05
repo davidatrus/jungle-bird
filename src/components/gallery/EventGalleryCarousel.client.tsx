@@ -1,50 +1,54 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { urlFor } from '@/sanity/image';
+import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
 
-type SanityImage =
-  | string
-  | { _ref?: string | null }
-  | { asset?: { _ref?: string | null; _id?: string | null } | null }
-  | null
-  | undefined;
-
-type Item = { caption?: string | null; image?: SanityImage };
+export type GalleryItem = {
+  caption?: string;
+  image: SanityImageSource;
+};
 
 const STEP = 1;
 const CARD_GAP = 16; // must match gap-4
 
-function getSanityImageSource(img: SanityImage) {
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+function getImageSource(img: SanityImageSource): SanityImageSource | null {
   if (!img) return null;
 
-  // If it's a direct ref string
+  // string ref
   if (typeof img === 'string') return img;
 
-  // If it's { _ref }
-  if (typeof img === 'object' && '_ref' in img && img._ref) return img;
-
-  // If it's { asset: { _ref | _id } }
-  if (
-    typeof img === 'object' &&
-    'asset' in img &&
-    img.asset &&
-    (img.asset._ref || img.asset._id)
-  ) {
+  // handle {_ref: "..."}
+  if (isRecord(img) && typeof img._ref === 'string' && img._ref) {
     return img;
+  }
+
+  // handle {asset: {_ref}} or {asset: {_id}}
+  if (isRecord(img) && isRecord(img.asset)) {
+    const asset = img.asset;
+    const ref = asset._ref;
+    const id = asset._id;
+
+    if ((typeof ref === 'string' && ref) || (typeof id === 'string' && id)) {
+      return img;
+    }
   }
 
   return null;
 }
 
-export default function GalleryCarouselClient({ items }: { items: Item[] }) {
+export default function EventGalleryCarouselClient({
+  items,
+}: {
+  items: GalleryItem[];
+}) {
   const scroller = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
-
-  const safeItems = useMemo(() => {
-    return (items || []).filter((it) => !!getSanityImageSource(it?.image));
-  }, [items]);
 
   const updateArrows = () => {
     const el = scroller.current;
@@ -76,42 +80,32 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
     const el = scroller.current;
     if (!el) return;
     const firstCard = el.querySelector<HTMLElement>('[data-card]');
-    const width = firstCard ? firstCard.getBoundingClientRect().width : 320;
+    const width = firstCard ? firstCard.getBoundingClientRect().width : 260;
     const delta = dir * (width + CARD_GAP) * STEP;
     el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
-  // If nothing valid, show a friendly fallback instead of rendering empty space
-  if (!safeItems.length) {
-    return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-        No gallery photos yet.
-      </div>
-    );
-  }
+  const safeItems = (items || []).filter((g) => getImageSource(g.image));
+  if (!safeItems.length) return null;
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <div
         ref={scroller}
-        className="scrollbar-none snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2"
+        className="scrollbar-none w-full max-w-full min-w-0 snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2"
         style={{ scrollbarWidth: 'none' }}
       >
-        <div className="grid auto-cols-[minmax(280px,1fr)] grid-flow-col gap-4 md:auto-cols-[minmax(340px,1fr)] lg:auto-cols-[minmax(360px,1fr)]">
+        <div className="grid w-max auto-cols-[minmax(220px,1fr)] grid-flow-col gap-4 md:auto-cols-[minmax(260px,1fr)] lg:auto-cols-[minmax(280px,1fr)]">
           {safeItems.map((g, i) => {
-            const srcObj = getSanityImageSource(g.image);
+            const imgSource = getImageSource(g.image);
+            if (!imgSource) return null;
 
-            // Defensive: should never be null due to filtering
-            if (!srcObj) return null;
-
-            let src = '';
-            try {
-              src = urlFor(srcObj).width(1200).height(800).fit('crop').url();
-            } catch {
-              return null;
-            }
-
-            const alt = (g.caption ?? '').trim() || 'Photo from Jungle Bird';
+            const src = urlFor(imgSource)
+              .width(1200)
+              .height(800)
+              .fit('crop')
+              .url();
+            const alt = (g.caption || '').trim() || 'Photo from Jungle Bird';
 
             return (
               <figure
@@ -122,7 +116,7 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
                 <img
                   src={src}
                   alt={alt}
-                  className="h-56 w-full object-cover sepia md:h-64"
+                  className="h-32 w-full object-cover sepia md:h-36"
                   loading={i < 3 ? 'eager' : 'lazy'}
                 />
               </figure>

@@ -114,7 +114,12 @@ export default defineType({
               name: 'name',
               title: 'Name',
               type: 'string',
-              validation: (Rule) => Rule.required(),
+              // in sanity schema field for name/title
+              validation: (Rule) =>
+                Rule.required().custom((value?: string) => {
+                  if (!value) return true
+                  return value.trim() === value ? true : 'No leading or trailing spaces.'
+                }),
             }),
             defineField({
               name: 'priceCents',
@@ -151,6 +156,14 @@ export default defineType({
               type: 'number',
               validation: (Rule) => Rule.min(1),
             }),
+            defineField({
+              name: 'ticketsOnSaleAt',
+              title: 'Tickets On Sale At',
+              type: 'datetime',
+              description:
+                'Used for the "New" badge. Set to when tickets become available for purchase.',
+            }),
+
             defineField({
               name: 'salesEndAt',
               title: 'Sales End At',

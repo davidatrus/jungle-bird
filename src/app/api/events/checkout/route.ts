@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 type CheckoutBody = {
   sanityEventId: string;
+  sanityTicketTypeId: string; // Sanity ticketTypes[] _key
   quantity: number;
   buyerFirstName: string;
   buyerLastName: string;
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Partial<CheckoutBody>;
 
     const sanityEventId = (body.sanityEventId ?? '').trim();
+    const sanityTicketTypeId = (body.sanityTicketTypeId ?? '').trim();
     const quantity = Number(body.quantity ?? 0);
     const buyerFirstName = (body.buyerFirstName ?? '').trim();
     const buyerLastName = (body.buyerLastName ?? '').trim();
@@ -43,6 +45,13 @@ export async function POST(req: Request) {
     if (!sanityEventId) {
       return NextResponse.json(
         { error: 'Missing sanityEventId.' },
+        { status: 400 },
+      );
+    }
+
+    if (!sanityTicketTypeId) {
+      return NextResponse.json(
+        { error: 'Missing sanityTicketTypeId.' },
         { status: 400 },
       );
     }
@@ -74,28 +83,29 @@ export async function POST(req: Request) {
       // Lock the ticket type row so capacity checks are serialized.
       const eventRes = await client.query(
         `
-        select
-          e.id as event_id,
-          e.title,
-          e.sanity_slug,
-          e.status,
-          e.starts_at,
-          tt.id as ticket_type_id,
-          tt.name as ticket_name,
-          tt.currency,
-          tt.unit_amount_cents,
-          tt.capacity,
-          tt.sold_count,
-          tt.min_per_order,
-          tt.max_per_order,
-          tt.sales_end_at
-        from public.events e
-        join public.ticket_types tt on tt.event_id = e.id
-        where e.sanity_event_id = $1
-        limit 1
-        for update of tt
-        `,
-        [sanityEventId],
+  select
+    e.id as event_id,
+    e.title,
+    e.sanity_slug,
+    e.status,
+    e.starts_at,
+    tt.id as ticket_type_id,
+    tt.name as ticket_name,
+    tt.currency,
+    tt.unit_amount_cents,
+    tt.capacity,
+    tt.sold_count,
+    tt.min_per_order,
+    tt.max_per_order,
+    tt.sales_end_at
+  from public.events e
+  join public.ticket_types tt on tt.event_id = e.id
+  where e.sanity_event_id = $1
+    and tt.sanity_ticket_type_id = $2
+  limit 1
+  for update of tt
+  `,
+        [sanityEventId, sanityTicketTypeId],
       );
 
       if (eventRes.rowCount === 0) {
@@ -194,6 +204,7 @@ export async function POST(req: Request) {
         cancel_url: `${origin}/events/cancelled`,
         metadata: {
           sanity_event_id: sanityEventId,
+          sanity_ticket_type_id: sanityTicketTypeId,
           event_id: String(row.event_id),
           ticket_type_id: String(row.ticket_type_id),
           buyer_first_name: buyerFirstName,
@@ -206,6 +217,7 @@ export async function POST(req: Request) {
         payment_intent_data: {
           metadata: {
             sanity_event_id: sanityEventId,
+            sanity_ticket_type_id: sanityTicketTypeId,
           },
         },
       });
