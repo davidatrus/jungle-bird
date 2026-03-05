@@ -154,7 +154,7 @@ export async function POST(req: Request) {
       `
       insert into public.events (sanity_event_id, sanity_slug, venue_key, title, starts_at, ends_at, status)
       values ($1, $2, $3, $4, $5, $6, $7::public.event_status)
-      on conflict (sanity_event_id)
+      on conflict (event_id, sanity_event_id)
       do update set
         sanity_slug = excluded.sanity_slug,
         venue_key   = excluded.venue_key,
