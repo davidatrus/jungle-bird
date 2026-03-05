@@ -1,6 +1,5 @@
 // src/components/events/EventCard.tsx
 import Link from 'next/link';
-import { format, parseISO } from 'date-fns';
 import { urlFor } from '@/sanity/image';
 import { computeEventState } from '@/lib/eventState';
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
@@ -29,6 +28,25 @@ type SanityEvent = {
   ticketTypes?: SanityTicketType[];
   heroImage?: SanityImageSource;
 };
+
+const EVENT_TZ = process.env.NEXT_PUBLIC_EVENT_TIMEZONE || 'America/Edmonton';
+
+function formatEventDateTime(iso?: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+
+  // Similar to: 'EEE, MMM d, h:mm a'
+  return new Intl.DateTimeFormat('en-CA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: EVENT_TZ,
+  }).format(d);
+}
 
 function currencySymbol(code?: string) {
   const c = (code || 'cad').toLowerCase();
@@ -60,15 +78,6 @@ function computeBadges(opts: {
   const badges: string[] = [];
   const status = (opts.status || '').toLowerCase();
 
-  const now = Date.now();
-  const hours72 = 72 * 60 * 60 * 1000;
-
-  const parseTime = (iso?: string | null) => {
-    if (!iso) return null;
-    const t = Date.parse(iso);
-    return Number.isFinite(t) ? t : null;
-  };
-
   if (opts.isEnded || status === 'ended') badges.push('Ended');
   if (status === 'cancelled' || status === 'canceled') badges.push('Cancelled');
 
@@ -84,30 +93,32 @@ function computeBadges(opts: {
     if (opts.remainingCount <= 0) badges.push('Sold Out');
   }
 
+  // Happening soon (within 72h) — use raw Date math (timezone doesn’t matter for this comparison)
   if (
     status === 'on_sale' &&
     !opts.salesEnded &&
     !opts.isEnded &&
     opts.startsAt
   ) {
-    try {
-      const start = parseISO(opts.startsAt);
-      const diffHours = (start.getTime() - Date.now()) / (1000 * 60 * 60);
+    const startMs = Date.parse(opts.startsAt);
+    if (Number.isFinite(startMs)) {
+      const diffHours = (startMs - Date.now()) / (1000 * 60 * 60);
       if (diffHours >= 0 && diffHours <= 72) badges.unshift('Happening soon');
-    } catch {}
+    }
   }
 
+  // New (on sale in last 72h)
   if (
     status === 'on_sale' &&
     !opts.salesEnded &&
     !opts.isEnded &&
     opts.ticketsOnSaleAt
   ) {
-    try {
-      const onSale = parseISO(opts.ticketsOnSaleAt);
-      const diffHours = (Date.now() - onSale.getTime()) / (1000 * 60 * 60);
+    const onSaleMs = Date.parse(opts.ticketsOnSaleAt);
+    if (Number.isFinite(onSaleMs)) {
+      const diffHours = (Date.now() - onSaleMs) / (1000 * 60 * 60);
       if (diffHours >= 0 && diffHours <= 72) badges.unshift('New');
-    } catch {}
+    }
   }
 
   return badges;
@@ -152,9 +163,8 @@ export default function EventCard({
   const timeIso = state.isEnded
     ? event.endsAt || event.startsAt
     : event.startsAt;
-  const timeText = timeIso
-    ? format(parseISO(timeIso), 'EEE, MMM d, h:mm a')
-    : '';
+
+  const timeText = formatEventDateTime(timeIso);
   const timePrefix = state.isEnded ? 'Ended:' : 'Starts at:';
 
   const remainingText =
@@ -174,6 +184,7 @@ export default function EventCard({
     >
       {imageSrc ? (
         <div className="relative">
+          {/* Keeping <img> since you said warnings are ok */}
           <img
             src={imageSrc}
             alt={title}

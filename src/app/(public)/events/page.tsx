@@ -8,7 +8,6 @@ import { computeEventState } from '@/lib/eventState';
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
 
 export const revalidate = 60;
-//test change
 
 type SanityTicketType = {
   _key?: string;
@@ -67,10 +66,6 @@ export default async function EventsPage({
     salesEnded: boolean;
     soldOut: boolean;
   }) {
-    // 0 = purchasable upcoming
-    // 1 = sales ended OR sold out (but not ended)
-    // 2 = ended
-    // 3 = cancelled/draft/other (usually filtered out anyway)
     if (opts.isCancelled || opts.status === 'draft') return 3;
     if (opts.isEnded) return 2;
     if (opts.salesEnded || opts.soldOut) return 1;
@@ -121,21 +116,16 @@ export default async function EventsPage({
   });
 
   visible.sort((a, b) => {
-    // 1) bucket priority
     if (a.meta.bucket !== b.meta.bucket) return a.meta.bucket - b.meta.bucket;
 
-    // 2) within bucket
-    // bucket 0/1: soonest start first
     if (a.meta.bucket === 0 || a.meta.bucket === 1) {
       return a.meta.startsAtT - b.meta.startsAtT;
     }
 
-    // bucket 2: most recently ended first
     if (a.meta.bucket === 2) {
       return b.meta.endsAtT - a.meta.endsAtT;
     }
 
-    // fallback: newest created first
     return (
       (Date.parse(b.e._createdAt) || 0) - (Date.parse(a.e._createdAt) || 0)
     );

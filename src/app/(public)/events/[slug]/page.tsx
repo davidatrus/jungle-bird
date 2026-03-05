@@ -17,6 +17,9 @@ import EventGalleryCarousel from '@/components/gallery/EventGalleryCarousel.clie
 
 export const revalidate = 60;
 
+// Calgary / Mountain Time (handles DST properly)
+const EVENT_TZ = process.env.EVENT_TZ || 'America/Edmonton';
+
 type SanityEvent = {
   _id: string;
   title: string;
@@ -39,18 +42,20 @@ type SanityEvent = {
 type Params = { slug: string };
 
 function formatEventDay(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: EVENT_TZ,
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-  });
+  }).format(new Date(iso));
 }
 
 function formatEventTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: EVENT_TZ,
     hour: 'numeric',
     minute: '2-digit',
-  });
+  }).format(new Date(iso));
 }
 
 export default async function EventDetailPage({
@@ -92,7 +97,6 @@ export default async function EventDetailPage({
   const startTime = formatEventTime(event.startsAt);
   const endTime = event.endsAt ? formatEventTime(event.endsAt) : null;
 
-  // ✅ Normalize gallery items so caption is never null
   const galleryItems =
     event.gallery?.map((g) => ({
       image: g.image,
@@ -138,7 +142,6 @@ export default async function EventDetailPage({
       </div>
 
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        {/* Tickets first on mobile, right column on desktop */}
         <aside className="order-1 h-fit min-w-0 lg:sticky lg:top-24 lg:order-2">
           {event.status === 'on_sale' ? (
             summary ? (
@@ -166,7 +169,6 @@ export default async function EventDetailPage({
           )}
         </aside>
 
-        {/* Details second on mobile, left column on desktop */}
         <section className="order-2 min-w-0 rounded-2xl border border-white/10 bg-white/5 p-6 lg:order-1">
           <h2 className="text-xl font-semibold text-white">Details</h2>
 
