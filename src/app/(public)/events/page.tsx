@@ -8,6 +8,7 @@ import { computeEventState } from '@/lib/eventState';
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
 
 export const revalidate = 60;
+//test change
 
 type SanityTicketType = {
   _key?: string;
