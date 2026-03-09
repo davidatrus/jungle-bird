@@ -8,6 +8,7 @@ type ScanResult = null | {
   ok?: boolean;
   result?: string;
   event_title?: string;
+  venue_key?: string | null;
   buyer?: { name: string; email: string };
   checked_in_at?: string;
   error?: string;
@@ -16,20 +17,36 @@ type ScanResult = null | {
 function statusMeta(r: ScanResult) {
   if (!r) return { label: '', bg: '#e5e7eb', fg: '#111827' };
 
-  if (r.result === 'valid')
+  if (r.result === 'valid') {
     return { label: 'VALID', bg: '#dcfce7', fg: '#166534' };
-  if (r.result === 'already_used')
+  }
+  if (r.result === 'already_used') {
     return { label: 'ALREADY USED', bg: '#fef9c3', fg: '#854d0e' };
-  if (r.result === 'not_found')
+  }
+  if (r.result === 'not_found') {
     return { label: 'NOT FOUND', bg: '#fee2e2', fg: '#991b1b' };
-  if (r.result === 'invalid_code')
+  }
+  if (r.result === 'invalid_code') {
     return { label: 'INVALID CODE', bg: '#fee2e2', fg: '#991b1b' };
-  if (r.result === 'unauthorized')
+  }
+  if (r.result === 'unauthorized') {
     return { label: 'UNAUTHORIZED', bg: '#fee2e2', fg: '#991b1b' };
-  if (r.result === 'scan_error')
+  }
+  if (r.result === 'scan_error') {
     return { label: 'ERROR', bg: '#fee2e2', fg: '#991b1b' };
+  }
+  if (r.result === 'voided')
+    return { label: 'VOIDED', bg: '#fee2e2', fg: '#991b1b' };
+  if (r.result === 'event_cancelled')
+    return { label: 'EVENT CANCELLED', bg: '#fee2e2', fg: '#991b1b' };
 
   return { label: r.ok ? 'OK' : 'ERROR', bg: '#e5e7eb', fg: '#111827' };
+}
+
+function formatVenueLabel(venueKey?: string | null) {
+  if (venueKey === 'prohibition') return 'Prohibition';
+  if (venueKey === 'jungle_bird') return 'Jungle Bird';
+  return venueKey || '';
 }
 
 const LS_KEY = 'jb_admin_scan_token';
@@ -46,12 +63,10 @@ export default function AdminScanPage() {
   const codeRef = useRef<HTMLInputElement | null>(null);
   const videoWrapRef = useRef<HTMLDivElement | null>(null);
 
-  // --- Anti-spam locks ---
   const lastCodeRef = useRef<string>('');
   const cooldownUntilRef = useRef<number>(0);
   const inFlightRef = useRef<boolean>(false);
 
-  // Load token from localStorage
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(LS_KEY) || '';
@@ -59,14 +74,12 @@ export default function AdminScanPage() {
     } catch {}
   }, []);
 
-  // Support prefill from URL: /admin/scan?code=XXXX
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const c = sp.get('code');
     if (c) setCode(c.toUpperCase().trim());
   }, []);
 
-  // Focus code input
   useEffect(() => {
     codeRef.current?.focus();
   }, []);
@@ -103,7 +116,6 @@ export default function AdminScanPage() {
       const data = await res.json().catch(() => ({}));
       setResult({ status: res.status, ...data });
 
-      // Keep focus ready for next scan
       setTimeout(() => codeRef.current?.focus(), 0);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Request failed';
@@ -111,9 +123,7 @@ export default function AdminScanPage() {
     } finally {
       setLoading(false);
       inFlightRef.current = false;
-
-      // Small cooldown after any scan request (prevents double submit)
-      cooldownUntilRef.current = Date.now() + 1200; // 1.2s
+      cooldownUntilRef.current = Date.now() + 1200;
     }
   }
 
@@ -130,13 +140,11 @@ export default function AdminScanPage() {
     } catch {}
   }
 
-  // Camera scanning
   useEffect(() => {
     if (!cameraOn) return;
 
     const reader = new BrowserMultiFormatReader();
     let stopped = false;
-
     let controls: { stop: () => void } | null = null;
 
     const start = async () => {
@@ -170,7 +178,6 @@ export default function AdminScanPage() {
               const now = Date.now();
               if (now < cooldownUntilRef.current) return;
 
-              // Accept either raw code OR a URL containing ?code=XXXX
               let found = text.toUpperCase();
 
               try {
@@ -181,20 +188,18 @@ export default function AdminScanPage() {
                 }
               } catch {}
 
-              // Ignore same code repeating while it stays in frame
               if (found === lastCodeRef.current) return;
 
               lastCodeRef.current = found;
               setCode(found);
 
-              // Start cooldown immediately so repeated decoder hits do nothing
-              cooldownUntilRef.current = now + 1500; // 1.5s grace period
+              cooldownUntilRef.current = now + 1500;
 
               if (autoSubmit && adminToken) {
                 setTimeout(() => onScan(), 0);
               }
             } else if (err) {
-              // Ignore decode errors while searching.
+              // ignore live decode errors
             }
           },
         );
@@ -437,6 +442,12 @@ export default function AdminScanPage() {
             {result.event_title && (
               <div style={{ fontWeight: 800, marginBottom: 6 }}>
                 {result.event_title}
+              </div>
+            )}
+
+            {result.venue_key && (
+              <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 6 }}>
+                Venue: {formatVenueLabel(result.venue_key)}
               </div>
             )}
 

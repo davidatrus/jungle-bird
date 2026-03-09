@@ -13,18 +13,15 @@ type SanityImage =
 type Item = { caption?: string | null; image?: SanityImage };
 
 const STEP = 1;
-const CARD_GAP = 16; // must match gap-4
+const CARD_GAP = 16;
 
 function getSanityImageSource(img: SanityImage) {
   if (!img) return null;
 
-  // If it's a direct ref string
   if (typeof img === 'string') return img;
 
-  // If it's { _ref }
   if (typeof img === 'object' && '_ref' in img && img._ref) return img;
 
-  // If it's { asset: { _ref | _id } }
   if (
     typeof img === 'object' &&
     'asset' in img &&
@@ -37,10 +34,18 @@ function getSanityImageSource(img: SanityImage) {
   return null;
 }
 
-export default function GalleryCarouselClient({ items }: { items: Item[] }) {
+export default function GalleryCarouselClient({
+  items,
+  venueKey = 'jungle_bird',
+}: {
+  items: Item[];
+  venueKey?: 'jungle_bird' | 'prohibition';
+}) {
   const scroller = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+
+  const isProhibition = venueKey === 'prohibition';
 
   const safeItems = useMemo(() => {
     return (items || []).filter((it) => !!getSanityImageSource(it?.image));
@@ -81,10 +86,25 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
     el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
-  // If nothing valid, show a friendly fallback instead of rendering empty space
   if (!safeItems.length) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+      <div
+        className={`rounded-2xl p-4 text-sm ${
+          isProhibition
+            ? 'border'
+            : 'border border-white/10 bg-white/5 text-white/70'
+        }`}
+        style={
+          isProhibition
+            ? {
+                borderColor: 'rgba(214,178,84,0.26)',
+                background:
+                  'linear-gradient(180deg, rgba(4,10,24,0.96) 0%, rgba(2,6,16,0.98) 100%)',
+                color: 'var(--text)',
+              }
+            : undefined
+        }
+      >
         No gallery photos yet.
       </div>
     );
@@ -100,8 +120,6 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
         <div className="grid auto-cols-[minmax(280px,1fr)] grid-flow-col gap-4 md:auto-cols-[minmax(340px,1fr)] lg:auto-cols-[minmax(360px,1fr)]">
           {safeItems.map((g, i) => {
             const srcObj = getSanityImageSource(g.image);
-
-            // Defensive: should never be null due to filtering
             if (!srcObj) return null;
 
             let src = '';
@@ -111,13 +129,25 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
               return null;
             }
 
-            const alt = (g.caption ?? '').trim() || 'Photo from Jungle Bird';
+            const alt =
+              (g.caption ?? '').trim() ||
+              (isProhibition
+                ? 'Photo from Prohibition'
+                : 'Photo from Jungle Bird');
 
             return (
               <figure
                 key={i}
                 data-card
                 className="brass-border snap-start overflow-hidden rounded-2xl ring-1 ring-[var(--line)]"
+                style={
+                  isProhibition
+                    ? {
+                        background:
+                          'linear-gradient(180deg, rgba(4,10,24,0.95) 0%, rgba(2,6,16,0.98) 100%)',
+                      }
+                    : undefined
+                }
               >
                 <img
                   src={src}
@@ -136,7 +166,17 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
           aria-label="Previous"
           onClick={() => scrollByCards(-1)}
           className="brass-border absolute top-1/2 left-0 -translate-y-1/2 rounded-full border px-3 py-2 opacity-70 hover:opacity-100"
-          style={{ background: 'rgba(27,22,18,.6)', color: 'var(--text)' }}
+          style={
+            isProhibition
+              ? {
+                  background: 'rgba(2, 6, 16, 0.84)',
+                  color: 'var(--text)',
+                }
+              : {
+                  background: 'rgba(27,22,18,.6)',
+                  color: 'var(--text)',
+                }
+          }
         >
           ‹
         </button>
@@ -147,7 +187,17 @@ export default function GalleryCarouselClient({ items }: { items: Item[] }) {
           aria-label="Next"
           onClick={() => scrollByCards(1)}
           className="brass-border absolute top-1/2 right-0 -translate-y-1/2 rounded-full border px-3 py-2 opacity-70 hover:opacity-100"
-          style={{ background: 'rgba(27,22,18,.6)', color: 'var(--text)' }}
+          style={
+            isProhibition
+              ? {
+                  background: 'rgba(2, 6, 16, 0.84)',
+                  color: 'var(--text)',
+                }
+              : {
+                  background: 'rgba(27,22,18,.6)',
+                  color: 'var(--text)',
+                }
+          }
         >
           ›
         </button>

@@ -1,5 +1,7 @@
+export type VenueKey = 'jungle_bird' | 'prohibition';
 export type Post = {
   id: string;
+  venueKey: VenueKey;
   title: string;
   excerpt: string;
   image: string;
@@ -13,6 +15,7 @@ export const posts: Post[] = [
     id: '1',
     title:
       'Why Jungle Bird Is Calgary’s Hottest Date-Night Spot: What to Expect Before You Go',
+    venueKey: 'jungle_bird',
     excerpt:
       'Planning a date night in Calgary? Here’s what to expect from Jungle Bird’s ember-lit underground lounge before you go.',
     image: '/images/posts/post-1.png',
@@ -46,6 +49,7 @@ export const posts: Post[] = [
     id: '2',
     title:
       'The Best Tiki Cocktails in Calgary: What to Order at Jungle Bird (and Why)',
+    venueKey: 'jungle_bird',
     excerpt:
       'From bold tropical blends to fiery signatures, here are the must-try tiki cocktails at Jungle Bird and why guests love them.',
     image: '/images/posts/post-2.png',
@@ -106,6 +110,7 @@ export const posts: Post[] = [
     id: '3',
     title:
       'Your Ultimate Guide to Nightlife on 17th Ave: Where to Eat, Drink, and Escape the Cold',
+    venueKey: 'jungle_bird',
     excerpt:
       'Looking for winter-friendly nightlife on 17th Ave in Calgary? Here’s how to eat, drink, and stay warm without leaving the strip.',
     image: '/images/posts/post-3.png',
@@ -135,6 +140,124 @@ export const posts: Post[] = [
       'Plan Your Next Night on 17th Ave',
       'If you want a simple, fun winter night out, 17th Ave offers some of the best indoor options in Calgary. Start or end your night at Jungle Bird to enjoy tropical cocktails, warm lighting, and a comfortable escape from the cold.',
       'It’s the perfect winter spot for eating, drinking, and experiencing the best of **17th Ave Calgary nightlife**.',
+    ],
+  },
+  {
+    id: 'p-1',
+    venueKey: 'prohibition',
+    title: 'The Roaring Twenties: A Decade of Excess and Rebellion',
+    excerpt: 'The Roaring Twenties: A Decade of Excess and Rebellion.',
+    image: '/images/posts/prohibition-1.webp',
+    href: '/prohibition/blog/roaring-twenties-party-era',
+    slug: 'roaring-twenties-party-era',
+    content: [
+      'The 1920s, often called the “Roaring Twenties,” was one of the most unforgettable decades in modern history. It was a time of bold change, social rebellion, economic optimism, and nightlife that felt electric. But what actually made the 1920s such a party era?',
+
+      'The Prohibition Era: A Boozy Beginning',
+      'In 1920, the 18th Amendment banned the manufacture, sale, and transportation of alcohol in the United States. Instead of stopping drinking, Prohibition sparked an underground nightlife culture built on secrecy, rebellion, and celebration.',
+
+      'The Speakeasy Revolution',
+      'Speakeasies were hidden bars tucked behind unmarked doors, basements, or disguised storefronts. The thrill of the forbidden made them irresistible. Inside, people danced, drank bootleg liquor, and escaped the rules of the day.',
+
+      'Economic Prosperity: Money to Burn',
+      'With World War I behind them and industry booming, many people had more disposable income than ever. That prosperity meant more nights out, more entertainment, and more “why not?” energy.',
+
+      'The Birth of Consumer Culture',
+      'The 1920s embraced modern life: cars, radios, new fashion, and new social freedom. People wanted more experiences, more excitement, and more style. The mentality was simple: live big.',
+
+      'Social Rebellion: Breaking Free from Tradition',
+      'Old rules started to loosen. People experimented with identity, fashion, music, and nightlife. Parties became a symbol of freedom and modernity.',
+
+      'Flappers, Fashion, and Independence',
+      'Flappers represented a cultural shift. Shorter skirts, bobbed hair, bold confidence, and a refusal to follow old expectations helped define the carefree mood of the decade.',
+
+      'Jazz and Dance Took Over the Night',
+      'Jazz became the soundtrack of the Roaring Twenties. Dance styles like the Charleston and Lindy Hop brought high energy into clubs and dance halls, turning nights out into full-on celebrations.',
+
+      'A Creative Explosion in Art, Design, and Literature',
+      'The 1920s also thrived culturally. Art deco influenced everything from architecture to cocktail aesthetics. Writers captured the era’s excess and glamour, and the whole decade felt like a creative spark.',
+
+      'The Roaring Twenties Legacy',
+      'The 1920s were a party era shaped by prohibition, prosperity, rebellion, and creativity. It’s a reminder that even in chaotic times, people can still find reasons to celebrate.',
+    ],
+  },
+  {
+    id: 'p-2',
+    venueKey: 'prohibition',
+    title:
+      'Step into the Past: Grand Opening of Downtown Calgary’s Most Exclusive Underground Lounge',
+    excerpt:
+      'Step into the Past: Grand Opening of Downtown Calgary’s Most Exclusive Underground Lounge ',
+    image: '/images/posts/prohibition-2.webp',
+    href: '/prohibition/blog/step-into-the-past-grand-opening-of-downtown-calgarys-most-exclusive-underground-lounge',
+    slug: 'step-into-the-past-grand-opening-of-downtown-calgarys-most-exclusive-underground-lounge',
+    content: [
+      'Downtown Calgary is about to get a nightlife experience inspired by the Prohibition Era. Prohibition Bar & Lounge invites you to step into a world of hidden glamour, classic cocktails, and the sound of jazz that defined the Roaring Twenties.',
+
+      'Reliving the Roaring Twenties',
+      'The 1920s were an era of decadence and rebellion. Speakeasies thrived, cocktails became an art form, and the party never really stopped. Prohibition Bar & Lounge brings that atmosphere back with a vintage-inspired speakeasy vibe designed for modern nights out.',
+
+      'Sounds of the Swing and Jazz Age',
+      'The soundtrack matters. The Jazz Age was built on rhythm, movement, and energy, and Prohibition keeps that spirit alive with live music that feels like stepping back in time.',
+
+      'Crafting the Perfect Cocktail',
+      'During Prohibition, cocktails evolved into something more than drinks. They became craft, ritual, and identity. Expect classic foundations with modern execution and a focus on quality, balance, and style.',
+
+      'Vintage Décor and Atmosphere',
+      'Dim lighting, cozy corners, and vintage details help create the feeling of an underground lounge where the night unfolds slowly and intentionally.',
+
+      'The Grand Opening Experience',
+      'If you love speakeasy energy, jazz-era styling, and craft cocktails, the grand opening is your chance to experience the concept from day one.',
+
+      'Reserve Your Table',
+      'Secure your spot early and make a night of it. Come with friends, dress the part, and lean into the Roaring Twenties mood.',
+
+      'Actionable Checklist',
+      '• Reserve your table for opening night.',
+      '• Invite friends and make it a full evening.',
+      '• Dress with a touch of vintage style for the full experience.',
+    ],
+  },
+  {
+    id: 'p-3',
+    venueKey: 'prohibition',
+    title: 'Prohibition Era Cocktail: A Vintage Tribute to Summer Refreshment',
+    excerpt:
+      'Prohibition Era Cocktail: A Vintage Tribute to Summer Refreshment ',
+    image: '/images/posts/prohibition-3.jpg',
+    href: '/prohibition/blog/prohibition-Era-Cocktail',
+    slug: 'prohibition-Era-Cocktail',
+    content: [
+      'Looking for a refreshing summer cocktail in Calgary’s 17th Ave district? Prohibition Lounge’s Prohibition Era Cocktail is a bright, easy-drinking blend made for patio season.',
+
+      'The Inspiration Behind the Prohibition Era Cocktail',
+      'During Prohibition, people got creative. Homemade cocktails and clever combinations became part of the culture. This drink is inspired by that era’s ingenuity and “make it work” energy.',
+
+      'What’s in the Cocktail',
+      'The Prohibition Era Cocktail combines gin, fresh lime juice, honey syrup, and soda water. The gin brings subtle botanical character, while lime and soda keep it crisp and refreshing.',
+
+      'The Secret to the Sweetness',
+      'Instead of plain sugar, this cocktail uses honey syrup. That adds depth, a smoother sweetness, and a richer finish that pairs well with gin’s herbal notes.',
+
+      'How It Looks (and Why That Matters)',
+      'The honey syrup gives the drink a warm golden tint, and the soda adds a light sparkle. It’s one of those cocktails that looks as good as it tastes.',
+
+      'How to Enjoy It',
+      'Order it on the patio, sip it slowly, and let it do what summer cocktails should do: cool you down and keep the night going.',
+
+      'Other Prohibition-Inspired Drinks',
+      'If you like vintage-style cocktails, you’ll also love classics like Manhattans and Old Fashioneds, plus seasonal spins and modern favourites.',
+
+      'The Atmosphere',
+      'Prohibition Lounge is built for intimate nights, date vibes, and relaxed hangs. Dim lighting and vintage décor bring the speakeasy feel without being over-the-top.',
+
+      'FAQs',
+      '• Can I make a reservation? Yes, Prohibition Lounge accepts reservations for parties of six or more. Smaller groups are first-come, first-served.',
+      '• Does Prohibition Lounge serve food? Yes.',
+      '• Is it 18+? Yes, it’s an 18+ venue.',
+
+      'Conclusion',
+      'If you want something refreshing, unique, and speakeasy-inspired, the Prohibition Era Cocktail is a must-try.',
     ],
   },
 ];

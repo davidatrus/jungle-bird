@@ -1,12 +1,16 @@
+// src/app/(public)/prohibition/menu/page.tsx
 import { client } from '@/sanity/client';
 import { qMenu } from '@/sanity/queries';
 
 const LOCAL_FALLBACK_PDF = '/images/menu/menu.pdf';
 
-export const revalidate = 60; // 0 in dev if you want
+export const revalidate = 60;
 
-export default async function MenuPage() {
-  const data = await client.fetch(qMenu).catch(() => null);
+export default async function ProhibitionMenuPage() {
+  const venueKey = 'prohibition';
+
+  const data = await client.fetch(qMenu, { venueKey }).catch(() => null);
+
   const pdfUrl: string = data?.menuPdf?.asset?.url || LOCAL_FALLBACK_PDF;
   const version: string | undefined = data?.version;
   const updated: string | undefined = data?.updated;

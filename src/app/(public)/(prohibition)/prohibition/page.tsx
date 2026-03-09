@@ -9,13 +9,13 @@ import Footer from '@/components/footer/Footer';
 export default function HomePage() {
   return (
     <>
-      <Hero />
-      <About />
-      <MenuCTA />
-      <Gallery />
-      <Location />
-      <Blog />
-      <Footer />
+      <Hero venueKey="prohibition" />
+      <About venueKey="prohibition" />
+      <MenuCTA venueKey="prohibition" />
+      <Gallery venueKey="prohibition" />
+      <Location venueKey="prohibition" />
+      <Blog venueKey="prohibition" />
+      <Footer venueKey="prohibition" />
     </>
   );
 }

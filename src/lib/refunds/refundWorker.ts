@@ -1,8 +1,8 @@
-// src/lib/refunds/refundWorker.ts
 import type { PoolClient } from 'pg';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
+import type { VenueKey } from '@/lib/venueConfig';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const resend = new Resend(process.env.RESEND_API_KEY as string);
@@ -10,6 +10,24 @@ const resend = new Resend(process.env.RESEND_API_KEY as string);
 type WorkerOptions = {
   maxItems?: number; // per run
 };
+
+function normalizeVenueKey(value: string | null | undefined): VenueKey {
+  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
+}
+
+function getVenueEmailBranding(venueKey: VenueKey) {
+  if (venueKey === 'prohibition') {
+    return {
+      from: 'Prohibition Tickets <tickets@junglebirdtikiyyc.com>',
+      signoff: 'Prohibition',
+    };
+  }
+
+  return {
+    from: 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>',
+    signoff: 'Jungle Bird',
+  };
+}
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -28,7 +46,6 @@ export async function processRefundQueue(
   const maxItems = Math.max(1, Math.min(100, opts.maxItems ?? 25));
   const startedAt = Date.now();
 
-  // 1) Pick ONE run to work on (queued first, otherwise running)
   const runRes = await client.query(
     `
     select id, event_id, sanity_event_id, status
@@ -58,7 +75,6 @@ export async function processRefundQueue(
     status: string;
   };
 
-  // Mark it running
   if (run.status !== 'running') {
     await client.query(
       `update public.refund_runs set status='running', updated_at=now() where id=$1`,
@@ -66,7 +82,6 @@ export async function processRefundQueue(
     );
   }
 
-  // 2) Grab a batch of queued/failed items for this run (skip refunded/skipped)
   const itemsRes = await client.query(
     `
     select
@@ -79,7 +94,8 @@ export async function processRefundQueue(
       o.stripe_checkout_session_id,
       o.stripe_payment_intent_id,
       o.total_cents,
-      e.title as event_title
+      e.title as event_title,
+      e.venue_key
     from public.refund_run_items rri
     join public.orders o on o.id = rri.order_id
     join public.events e on e.id = o.event_id
@@ -103,10 +119,10 @@ export async function processRefundQueue(
     stripe_payment_intent_id: string | null;
     total_cents: number;
     event_title: string;
+    venue_key: string | null;
   }>;
 
   if (!items.length) {
-    // Nothing left to do => complete run
     await client.query(
       `update public.refund_runs set status='completed', updated_at=now() where id=$1`,
       [run.id],
@@ -127,7 +143,6 @@ export async function processRefundQueue(
 
   for (const item of items) {
     try {
-      // Re-check order status for safety
       const stRes = await client.query(
         `select status from public.orders where id=$1 limit 1`,
         [item.order_id],
@@ -152,7 +167,6 @@ export async function processRefundQueue(
         continue;
       }
 
-      // Determine PaymentIntent
       let paymentIntentId = item.stripe_payment_intent_id;
       if (!paymentIntentId) {
         const session = await stripe.checkout.sessions.retrieve(
@@ -162,18 +176,20 @@ export async function processRefundQueue(
       }
       if (!paymentIntentId) throw new Error('Missing payment_intent_id');
 
-      // Stripe refund
+      const venueKey = normalizeVenueKey(item.venue_key);
+      const branding = getVenueEmailBranding(venueKey);
+
       const refund = await stripe.refunds.create({
         payment_intent: paymentIntentId,
         reason: 'requested_by_customer',
         metadata: {
           order_id: item.order_id,
           refund_run_id: run.id,
+          venue_key: venueKey,
           reason: 'event_cancelled',
         },
       });
 
-      // Apply to DB (void tickets, decrement sold_count, mark order refunded)
       await applyRefundToOrder(client, {
         orderId: item.order_id,
         reason: 'Event cancelled',
@@ -182,7 +198,6 @@ export async function processRefundQueue(
         stripePaymentIntentId: paymentIntentId,
       });
 
-      // Mark item refunded
       await client.query(
         `
         update public.refund_run_items
@@ -200,8 +215,7 @@ export async function processRefundQueue(
 
       refunded += 1;
 
-      // Email (after DB is consistent)
-      const from = 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>';
+      const from = branding.from;
       const buyerName =
         `${item.buyer_first_name} ${item.buyer_last_name}`.trim();
 
@@ -218,12 +232,11 @@ export async function processRefundQueue(
               Depending on your bank, it may take a few business days to appear.
             </p>
             <p style="margin:0 0 12px; color:#666;">Refund reference: ${refund.id}</p>
-            <p style="margin:0;">Thanks,<br/>Jungle Bird</p>
+            <p style="margin:0;">Thanks,<br/>${branding.signoff}</p>
           </div>
         `,
       });
 
-      // Optional: track email idempotency (recommended)
       await client.query(
         `update public.orders set cancel_email_sent_at = coalesce(cancel_email_sent_at, now()), updated_at=now() where id=$1`,
         [item.order_id],
@@ -245,7 +258,6 @@ export async function processRefundQueue(
     }
   }
 
-  // 3) If there are still queued/failed items, leave run as running, else complete
   const remainingRes = await client.query(
     `
     select count(*)::int as c

@@ -3,12 +3,9 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
-//testing respin of page now again again again
-function requireAdmin(req: Request) {
-  // Preferred: Bearer token
-  const expectedBearer = process.env.ADMIN_SCAN_TOKEN;
 
-  // Back-compat: your existing header
+function requireAdmin(req: Request) {
+  const expectedBearer = process.env.ADMIN_SCAN_TOKEN;
   const expectedLegacy = process.env.ADMIN_SCAN_KEY;
 
   const auth = req.headers.get('authorization') || '';
@@ -18,17 +15,14 @@ function requireAdmin(req: Request) {
 
   const legacy = req.headers.get('x-admin-key') || '';
 
-  // If neither env is set, fail closed
   if (!expectedBearer && !expectedLegacy) {
     return { ok: false, reason: 'ADMIN_SCAN_TOKEN/ADMIN_SCAN_KEY not set' };
   }
 
-  // Accept bearer if configured
   if (expectedBearer && bearer && bearer === expectedBearer) {
     return { ok: true as const, mode: 'bearer' as const };
   }
 
-  // Accept legacy header if configured
   if (expectedLegacy && legacy && legacy === expectedLegacy) {
     return { ok: true as const, mode: 'legacy' as const };
   }
@@ -45,6 +39,7 @@ export async function POST(req: Request) {
     code?: unknown;
     scanner_label?: unknown;
   };
+
   const auth = requireAdmin(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -87,7 +82,12 @@ export async function POST(req: Request) {
         t.id as ticket_id,
         t.ticket_code,
         t.checked_in_at,
+        t.voided_at,
+        t.void_reason,
         e.title as event_title,
+        e.venue_key,
+        e.status as event_status,
+        o.status as order_status,
         o.buyer_first_name,
         o.buyer_last_name,
         o.buyer_email
@@ -101,7 +101,6 @@ export async function POST(req: Request) {
     );
 
     if (ticketRes.rowCount === 0) {
-      // Optional logging (if table exists)
       await client
         .query(
           `
@@ -122,7 +121,12 @@ export async function POST(req: Request) {
     const row = ticketRes.rows[0] as {
       ticket_id: string;
       checked_in_at: string | null;
+      voided_at: string | null;
+      void_reason: string | null;
       event_title: string;
+      venue_key: string | null;
+      event_status: string | null;
+      order_status: string | null;
       buyer_first_name: string;
       buyer_last_name: string;
       buyer_email: string;
@@ -133,6 +137,10 @@ export async function POST(req: Request) {
       email: row.buyer_email,
     };
 
+    const eventStatus = (row.event_status || '').toLowerCase();
+    const orderStatus = (row.order_status || '').toLowerCase();
+
+    // 1) Already used
     if (row.checked_in_at) {
       await client.query(
         `
@@ -149,10 +157,78 @@ export async function POST(req: Request) {
         result: 'already_used',
         checked_in_at: row.checked_in_at,
         event_title: row.event_title,
+        venue_key: row.venue_key,
         buyer,
       });
     }
 
+    // 2) Ticket explicitly voided
+    if (row.voided_at) {
+      await client.query(
+        `
+        insert into public.ticket_scans (ticket_id, scan_result, scanner_label)
+        values ($1, 'voided', $2)
+        `,
+        [row.ticket_id, scannerLabel],
+      );
+
+      await client.query('commit');
+
+      return NextResponse.json({
+        ok: false,
+        result: 'voided',
+        event_title: row.event_title,
+        venue_key: row.venue_key,
+        buyer,
+        error: row.void_reason || 'This ticket is no longer valid.',
+      });
+    }
+
+    // 3) Refunded/cancelled/failed order
+    if (['refunded', 'cancelled', 'failed'].includes(orderStatus)) {
+      await client.query(
+        `
+        insert into public.ticket_scans (ticket_id, scan_result, scanner_label)
+        values ($1, 'voided', $2)
+        `,
+        [row.ticket_id, scannerLabel],
+      );
+
+      await client.query('commit');
+
+      return NextResponse.json({
+        ok: false,
+        result: 'voided',
+        event_title: row.event_title,
+        venue_key: row.venue_key,
+        buyer,
+        error: `This ticket is tied to a ${orderStatus} order and is no longer valid.`,
+      });
+    }
+
+    // 4) Cancelled event
+    if (eventStatus === 'cancelled' || eventStatus === 'canceled') {
+      await client.query(
+        `
+        insert into public.ticket_scans (ticket_id, scan_result, scanner_label)
+        values ($1, 'event_cancelled', $2)
+        `,
+        [row.ticket_id, scannerLabel],
+      );
+
+      await client.query('commit');
+
+      return NextResponse.json({
+        ok: false,
+        result: 'event_cancelled',
+        event_title: row.event_title,
+        venue_key: row.venue_key,
+        buyer,
+        error: 'This event has been cancelled. Ticket is not valid for entry.',
+      });
+    }
+
+    // 5) Valid
     await client.query(
       `
       update public.tickets
@@ -176,6 +252,7 @@ export async function POST(req: Request) {
       ok: true,
       result: 'valid',
       event_title: row.event_title,
+      venue_key: row.venue_key,
       buyer,
       checked_in_at: new Date().toISOString(),
     });

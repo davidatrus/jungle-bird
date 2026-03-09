@@ -3,18 +3,20 @@ import {deskTool} from 'sanity/desk'
 import {visionTool} from '@sanity/vision'
 import {schemaTypes} from './schemas'
 import {cancelEventAction} from './actions/cancelEventAction'
+import {deskStructure} from './deskStructure'
 
 export default defineConfig({
   name: 'default',
   title: 'Jungle Bird',
-  projectId: 'x77edsca',
-  dataset: 'production',
-  plugins: [deskTool(), visionTool()],
+  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'x77edsca',
+
+  plugins: [deskTool({structure: deskStructure}), visionTool()],
+
   schema: {types: schemaTypes},
 
   document: {
     actions: (prev, ctx) => {
-      // Only add to Event docs
       if (ctx.schemaType === 'event') {
         return [...prev, cancelEventAction]
       }

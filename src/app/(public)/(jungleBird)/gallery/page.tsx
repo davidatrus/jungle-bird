@@ -5,7 +5,10 @@ import GalleryGrid from '@/components/gallery/GalleryGrid';
 export const revalidate = 60;
 
 export default async function GalleryPage() {
-  const items = await client.fetch(qGallery).catch(() => []);
+  // ✅ Jungle Bird default route
+  const venueKey = 'jungle_bird' as const;
+
+  const items = await client.fetch(qGallery, { venueKey }).catch(() => []);
 
   return (
     <>
@@ -16,7 +19,6 @@ export default async function GalleryPage() {
         </p>
       </header>
 
-      {/* Turn on captions for this page only */}
       <GalleryGrid items={items} imgClass="h-64 md:h-72" showCaptions />
     </>
   );

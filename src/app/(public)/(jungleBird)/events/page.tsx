@@ -38,6 +38,8 @@ type SanityEventListItem = {
 
 type View = 'upcoming' | 'past' | 'all';
 
+const VENUE_KEY = 'jungle_bird';
+
 export default async function EventsPage({
   searchParams,
 }: {
@@ -47,7 +49,7 @@ export default async function EventsPage({
   const view = (sp.view as View) || 'upcoming';
 
   const events = await client
-    .fetch<SanityEventListItem[]>(qEventsList)
+    .fetch<SanityEventListItem[]>(qEventsList, { venueKey: VENUE_KEY })
     .catch(() => []);
 
   const ids = events.map((e) => e._id);
@@ -105,7 +107,6 @@ export default async function EventsPage({
     return { e, remainingCount, state, meta: { bucket, startsAtT, endsAtT } };
   });
 
-  // Hide cancelled from list views
   const visible = items.filter(({ state, e }) => {
     const statusLower = (e.status || '').toLowerCase();
     return (

@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { Resend } from 'resend';
 import { buildTicketsEmailPayload } from '@/lib/ticketsEmail';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
+import type { VenueKey } from '@/lib/venueConfig';
 
 export const runtime = 'nodejs';
 
@@ -21,6 +22,24 @@ function num(v: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function normalizeVenueKey(value: string | null | undefined): VenueKey {
+  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
+}
+
+function getVenueEmailBranding(venueKey: VenueKey) {
+  if (venueKey === 'prohibition') {
+    return {
+      from: 'Prohibition Tickets <tickets@junglebirdtikiyyc.com>',
+      subjectFallback: 'Prohibition Event',
+    };
+  }
+
+  return {
+    from: 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>',
+    subjectFallback: 'Jungle Bird Event',
+  };
+}
+
 async function applyRefundByPaymentIntent(input: {
   paymentIntentId: string;
   reason: string;
@@ -31,7 +50,6 @@ async function applyRefundByPaymentIntent(input: {
   try {
     await client.query('begin');
 
-    // Find the order by payment_intent (this is what your table stores)
     const orderRes = await client.query(
       `
       select id
@@ -72,12 +90,14 @@ async function applyRefundByPaymentIntent(input: {
 
 export async function POST(req: Request) {
   const sig = req.headers.get('stripe-signature');
-  if (!sig)
+  if (!sig) {
     return new NextResponse('Missing Stripe signature', { status: 400 });
+  }
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret)
+  if (!webhookSecret) {
     return new NextResponse('Webhook secret not configured', { status: 500 });
+  }
 
   let evt: Stripe.Event;
   try {
@@ -90,7 +110,6 @@ export async function POST(req: Request) {
 
   try {
     switch (evt.type) {
-      // ---- Handle session expired (release holds) ----
       case 'checkout.session.expired': {
         const session = evt.data.object as Stripe.Checkout.Session;
         try {
@@ -109,7 +128,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // ---- Handle refunds (authoritative DB apply via helper) ----
       case 'refund.created':
       case 'refund.updated': {
         const refund = evt.data.object as Stripe.Refund;
@@ -138,7 +156,6 @@ export async function POST(req: Request) {
           return NextResponse.json({ received: true, ...result });
         } catch (err) {
           console.error('Failed to apply refund to order:', err);
-          // returning 500 will cause Stripe retries (good if DB was temporarily down)
           return new NextResponse('Webhook error', { status: 500 });
         }
       }
@@ -160,7 +177,7 @@ export async function POST(req: Request) {
           const result = await applyRefundByPaymentIntent({
             paymentIntentId,
             reason: 'Charge refunded',
-            stripeRefundId: null, // charge.refunded doesn’t guarantee a refund id
+            stripeRefundId: null,
             refundedAmountCents: charge.amount_refunded ?? null,
           });
 
@@ -171,7 +188,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // ---- Main purchase flow ----
       case 'checkout.session.completed': {
         const session = evt.data.object as Stripe.Checkout.Session;
         const md = session.metadata;
@@ -190,6 +206,7 @@ export async function POST(req: Request) {
           quantity,
           unit_amount_cents,
           subtotal_cents,
+          venue_key,
         } = md;
 
         if (
@@ -205,15 +222,17 @@ export async function POST(req: Request) {
         }
 
         const qty = num(quantity, 0);
-        if (!Number.isFinite(qty) || qty <= 0)
+        if (!Number.isFinite(qty) || qty <= 0) {
           return new NextResponse('Invalid quantity', { status: 400 });
+        }
+
+        const metadataVenueKey = normalizeVenueKey(venue_key);
 
         const client = await pool.connect();
 
         try {
           await client.query('begin');
 
-          // Existing order (idempotency)
           const existingOrderRes = await client.query(
             `
             select id, email_sent_at, status
@@ -228,7 +247,6 @@ export async function POST(req: Request) {
             | { id: string; email_sent_at: string | null; status: string }
             | undefined;
 
-          // Lock the hold row (if it exists)
           const holdRes = await client.query(
             `
             select id, qty, status, expires_at
@@ -265,7 +283,6 @@ export async function POST(req: Request) {
             holdStatus !== 'active' ||
             (holdExpiresAt ? holdExpiresAt.getTime() <= Date.now() : true);
 
-          // If already emailed, just ensure hold is converted if it was active and exit
           if (existingOrder?.email_sent_at) {
             if (holdId && holdStatus === 'active') {
               await client.query(
@@ -280,7 +297,6 @@ export async function POST(req: Request) {
             });
           }
 
-          // If payment is late, re-check capacity at webhook-time (lock ticket_types row)
           if (isLatePayment) {
             const ttRes = await client.query(
               `
@@ -327,7 +343,6 @@ export async function POST(req: Request) {
                 `Late payment oversold: session=${session.id} qty=${effectiveQty} remaining=${remaining}. Auto-refunding.`,
               );
 
-              // Refund in Stripe
               const paymentIntentId =
                 (session.payment_intent as string) ?? null;
 
@@ -340,13 +355,13 @@ export async function POST(req: Request) {
                       stripe_checkout_session_id: session.id,
                       event_id: String(event_id),
                       ticket_type_id: String(ticket_type_id),
+                      venue_key: metadataVenueKey,
                       reason: 'late_payment_oversold',
                     },
                   });
                 } catch (e) {
                   console.error('Auto-refund failed (late oversell):', e);
 
-                  // If refund fails, still record order as failed so you can reconcile.
                   await client.query(
                     `
                     insert into public.orders (
@@ -394,7 +409,6 @@ export async function POST(req: Request) {
                 );
               }
 
-              // Record order as REFUNDED for clean reporting
               await client.query(
                 `
                 insert into public.orders (
@@ -444,7 +458,6 @@ export async function POST(req: Request) {
             }
           }
 
-          // Create/update order as PAID
           const orderRes = await client.query(
             `
             insert into public.orders (
@@ -491,7 +504,6 @@ export async function POST(req: Request) {
           const orderId = orderRes.rows[0].id as string;
           const emailSentAt = orderRes.rows[0].email_sent_at as string | null;
 
-          // Mint missing tickets if needed
           const ticketCountRes = await client.query(
             `select count(*)::int as c from public.tickets where order_id = $1`,
             [orderId],
@@ -524,7 +536,6 @@ export async function POST(req: Request) {
             );
           }
 
-          // Convert hold if it exists and is still active
           if (holdId && holdStatus === 'active') {
             await client.query(
               `update public.inventory_holds set status = 'converted' where id = $1`,
@@ -538,12 +549,17 @@ export async function POST(req: Request) {
 
           await client.query('commit');
 
-          // If already emailed, stop here
-          if (emailSentAt) return NextResponse.json({ received: true });
+          if (emailSentAt) {
+            return NextResponse.json({ received: true });
+          }
 
-          // Fetch details for email
           const eventInfoRes = await pool.query(
-            `select title, starts_at, ends_at from public.events where id = $1 limit 1`,
+            `
+            select title, starts_at, ends_at, venue_key
+            from public.events
+            where id = $1
+            limit 1
+            `,
             [event_id],
           );
 
@@ -552,10 +568,24 @@ export async function POST(req: Request) {
             [orderId],
           );
 
-          const eventInfo = eventInfoRes.rows[0];
+          const eventInfo = eventInfoRes.rows[0] as
+            | {
+                title: string;
+                starts_at: string | null;
+                ends_at: string | null;
+                venue_key: string | null;
+              }
+            | undefined;
+
+          const resolvedVenueKey = normalizeVenueKey(
+            eventInfo?.venue_key ?? metadataVenueKey,
+          );
+          const branding = getVenueEmailBranding(resolvedVenueKey);
+
           const tickets = ticketsRes.rows as { ticket_code: string }[];
 
           const { html, attachments } = await buildTicketsEmailPayload({
+            venueKey: resolvedVenueKey,
             title: eventInfo?.title ?? 'Event',
             startsAt: eventInfo?.starts_at ?? null,
             endsAt: eventInfo?.ends_at ?? null,
@@ -566,12 +596,10 @@ export async function POST(req: Request) {
             tickets,
           });
 
-          const from = 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>';
-
           await resend.emails.send({
-            from,
+            from: branding.from,
             to: buyer_email,
-            subject: `Your tickets for ${eventInfo?.title ?? 'Jungle Bird Event'}`,
+            subject: `Your tickets for ${eventInfo?.title ?? branding.subjectFallback}`,
             html,
             attachments,
           });

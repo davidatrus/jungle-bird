@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { pool } from '@/lib/db';
+import type { VenueKey } from '@/lib/venueConfig';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +19,10 @@ type CheckoutBody = {
 
 function isEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getVenueBasePath(venueKey: string | null | undefined) {
+  return venueKey === 'prohibition' ? '/prohibition' : '';
 }
 
 const HOLD_TTL_MINUTES = 15;
@@ -55,12 +60,15 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
     if (!Number.isInteger(quantity) || quantity <= 0) {
       return NextResponse.json({ error: 'Invalid quantity.' }, { status: 400 });
     }
+
     if (!buyerFirstName || !buyerLastName) {
       return NextResponse.json({ error: 'Name is required.' }, { status: 400 });
     }
+
     if (!buyerEmail || !isEmail(buyerEmail)) {
       return NextResponse.json(
         { error: 'Valid email is required.' },
@@ -80,31 +88,31 @@ export async function POST(req: Request) {
     try {
       await client.query('begin');
 
-      // Lock the ticket type row so capacity checks are serialized.
       const eventRes = await client.query(
         `
-  select
-    e.id as event_id,
-    e.title,
-    e.sanity_slug,
-    e.status,
-    e.starts_at,
-    tt.id as ticket_type_id,
-    tt.name as ticket_name,
-    tt.currency,
-    tt.unit_amount_cents,
-    tt.capacity,
-    tt.sold_count,
-    tt.min_per_order,
-    tt.max_per_order,
-    tt.sales_end_at
-  from public.events e
-  join public.ticket_types tt on tt.event_id = e.id
-  where e.sanity_event_id = $1
-    and tt.sanity_ticket_type_id = $2
-  limit 1
-  for update of tt
-  `,
+        select
+          e.id as event_id,
+          e.title,
+          e.sanity_slug,
+          e.venue_key,
+          e.status,
+          e.starts_at,
+          tt.id as ticket_type_id,
+          tt.name as ticket_name,
+          tt.currency,
+          tt.unit_amount_cents,
+          tt.capacity,
+          tt.sold_count,
+          tt.min_per_order,
+          tt.max_per_order,
+          tt.sales_end_at
+        from public.events e
+        join public.ticket_types tt on tt.event_id = e.id
+        where e.sanity_event_id = $1
+          and tt.sanity_ticket_type_id = $2
+        limit 1
+        for update of tt
+        `,
         [sanityEventId, sanityTicketTypeId],
       );
 
@@ -116,7 +124,23 @@ export async function POST(req: Request) {
         );
       }
 
-      const row = eventRes.rows[0];
+      const row = eventRes.rows[0] as {
+        event_id: string;
+        title: string;
+        sanity_slug: string;
+        venue_key: VenueKey | string | null;
+        status: string;
+        starts_at: string;
+        ticket_type_id: string;
+        ticket_name: string;
+        currency: string | null;
+        unit_amount_cents: number;
+        capacity: number;
+        sold_count: number;
+        min_per_order: number | null;
+        max_per_order: number | null;
+        sales_end_at: string | null;
+      };
 
       if (row.status !== 'on_sale') {
         await client.query('rollback');
@@ -147,6 +171,7 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+
       if (maxPerOrder !== null && quantity > maxPerOrder) {
         await client.query('rollback');
         return NextResponse.json(
@@ -155,7 +180,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Active holds that have not expired yet.
       const holdsRes = await client.query(
         `
         select coalesce(sum(qty), 0) as held_active
@@ -183,7 +207,12 @@ export async function POST(req: Request) {
       const unitAmount = Number(row.unit_amount_cents);
       const subtotalCents = unitAmount * quantity;
 
-      // Create Stripe Checkout session while we still hold the lock.
+      const venueKey: VenueKey =
+        row.venue_key === 'prohibition' ? 'prohibition' : 'jungle_bird';
+
+      const venueBasePath = getVenueBasePath(venueKey);
+      const successUrl = `${origin}${venueBasePath}/events/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${origin}${venueBasePath}/events/cancelled`;
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -200,9 +229,10 @@ export async function POST(req: Request) {
             quantity,
           },
         ],
-        success_url: `${origin}/events/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/events/cancelled`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         metadata: {
+          venue_key: venueKey,
           sanity_event_id: sanityEventId,
           sanity_ticket_type_id: sanityTicketTypeId,
           event_id: String(row.event_id),
@@ -216,13 +246,13 @@ export async function POST(req: Request) {
         },
         payment_intent_data: {
           metadata: {
+            venue_key: venueKey,
             sanity_event_id: sanityEventId,
             sanity_ticket_type_id: sanityTicketTypeId,
           },
         },
       });
 
-      // Create the hold tied to this session id.
       await client.query(
         `
         insert into public.inventory_holds (

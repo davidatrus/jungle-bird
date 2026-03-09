@@ -4,6 +4,8 @@ import { qSettings, qFaq } from '@/sanity/queries';
 
 export const revalidate = 60;
 
+type VenueKey = 'jungle_bird' | 'prohibition';
+
 type Hour = { days: string; time: string };
 type Settings = {
   address?: string;
@@ -14,9 +16,11 @@ type Settings = {
 type Faq = { question: string; answer: string };
 
 export default async function ContactPage() {
+  const venueKey: VenueKey = 'jungle_bird';
+
   const [settings, faqs] = await Promise.all([
-    client.fetch<Settings>(qSettings).catch(() => null),
-    client.fetch<Faq[]>(qFaq).catch(() => []),
+    client.fetch<Settings>(qSettings, { venueKey }).catch(() => null),
+    client.fetch<Faq[]>(qFaq, { venueKey }).catch(() => []),
   ]);
 
   const address = settings?.address || 'Address coming soon.';

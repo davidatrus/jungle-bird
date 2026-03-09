@@ -11,12 +11,10 @@
   letter-spacing: 0.18em;
 }
 
-/* Dark site */
 :root {
   color-scheme: dark;
 }
 
-/* Base text uses Source Sans 3; headings use Prata */
 body {
   background: var(--bg);
   color: var(--text);
@@ -31,7 +29,6 @@ body {
     Arial;
 }
 
-/* Headings default */
 h1,
 h2,
 h3,
@@ -44,7 +41,6 @@ h6 {
   font-weight: 400;
 }
 
-/* Utility: section titles */
 .section-title {
   font-family: var(--font-display), ui-serif, Georgia, serif;
   text-transform: uppercase;
@@ -53,7 +49,21 @@ h6 {
   font-weight: 400;
 }
 
-/* Brass borders & focus rings */
+/* Prohibition font override */
+[data-venue='prohibition'] h1,
+[data-venue='prohibition'] h2,
+[data-venue='prohibition'] h3,
+[data-venue='prohibition'] h4,
+[data-venue='prohibition'] h5,
+[data-venue='prohibition'] h6,
+[data-venue='prohibition'] .section-title {
+  font-family:
+    var(--font-prohibition-display), var(--font-display), ui-serif, Georgia,
+    serif;
+  letter-spacing: 0.035em;
+  font-weight: 500;
+}
+
 .brass-border {
   border-color: var(--line) !important;
 }
@@ -62,7 +72,6 @@ h6 {
   outline-offset: 2px;
 }
 
-/* Sepia image helper */
 .sepia {
   filter: sepia(0.35) contrast(1.05);
   transition: filter 0.2s ease;
@@ -71,7 +80,6 @@ h6 {
   filter: sepia(0.15) contrast(1.05);
 }
 
-/* Gallery scroller helpers */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -79,7 +87,6 @@ h6 {
   scroll-snap-align: start;
 }
 
-/* Active link style matching*/
 .nav-link {
   position: relative;
 }
@@ -95,7 +102,6 @@ h6 {
   border-radius: 2px;
 }
 
-/* Buttons: soft pop + brass ring */
 .btn-pop {
   transition:
     transform 0.18s ease,
@@ -120,7 +126,7 @@ h6 {
 .btn-shadow:hover {
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.26);
 }
-/* Dark scrim overlay for text-on-image sections */
+
 .scrim::before {
   content: '';
   position: absolute;
@@ -133,27 +139,31 @@ h6 {
   pointer-events: none;
 }
 
-/* Glassy backplate behind headings/buttons (optional) */
 .backplate {
   background: rgba(17, 18, 20, 0.35);
   backdrop-filter: blur(3px);
-  border: 1px solid rgba(201, 163, 90, 0.25); /* brass hint */
+  border: 1px solid rgba(201, 163, 90, 0.25);
   border-radius: 9999px;
 }
+
 .font-begum {
   font-family: var(--font-begum), ui-serif, Georgia, serif;
 }
 .font-mikado {
   font-family: var(--font-mikado), ui-sans-serif, system-ui, sans-serif;
 }
-/* Navbar glass background */
+
 .nav-glass {
   border-color: var(--line);
   background: rgba(27, 22, 18, 0.92);
   backdrop-filter: blur(6px);
 }
 
-/* Navbar text / line colors */
+[data-venue='prohibition'] .nav-glass {
+  background: rgba(8, 10, 14, 0.9);
+  backdrop-filter: blur(8px);
+}
+
 .text-nav {
   color: var(--text);
 }
@@ -162,10 +172,9 @@ h6 {
   border-color: var(--line);
 }
 
-/* CTA buttons */
 .nav-cta-btn {
   background: var(--cta);
-  color: #1b1612;
+  color: var(--cta-text);
 }
 
 .nav-cta-btn-disabled {
@@ -174,15 +183,18 @@ h6 {
   background: transparent;
 }
 
-/* Mobile nav background */
 .mobile-nav {
   background: rgba(27, 22, 18, 0.97);
 }
 
-/* Remove blue tap highlight on mobile */
+[data-venue='prohibition'] .mobile-nav {
+  background: rgba(8, 10, 14, 0.98);
+}
+
 .no-tap-highlight {
   -webkit-tap-highlight-color: transparent;
 }
+
 .hero-overlay {
   background: linear-gradient(
     180deg,
@@ -190,4 +202,13 @@ h6 {
     rgba(27, 22, 18, 0.9) 50%
   );
   isolation: isolate;
+}
+
+[data-venue='prohibition'] .hero-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 10, 16, 0.58) 0%,
+    rgba(7, 10, 16, 0.7) 38%,
+    rgba(7, 10, 16, 0.88) 100%
+  );
 }

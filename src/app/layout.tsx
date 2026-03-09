@@ -11,11 +11,8 @@ const localBusinessJsonLd = {
   url: 'https://www.junglebirdtikiyyc.com',
   telephone: '+1-825-982-8454',
   priceRange: '$$',
-
   image: 'https://www.junglebirdtikiyyc.com/images/og/jungle-bird-og.webp',
-
   servesCuisine: ['Tiki', 'Mexican', 'Bar Food'],
-
   address: {
     '@type': 'PostalAddress',
     streetAddress: '725a 17 Ave SW',
@@ -46,19 +43,19 @@ const localBusinessJsonLd = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.junglebirdtikiyyc.com'),
-  title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17 Ave',
+  title: {
+    default: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17 Ave',
+    template: '%s | Jungle Bird Tiki Lounge Calgary',
+  },
   description:
     "Discover Jungle Bird, Calgary's Tiki-Cave lounge on 17th Ave. Rum forward cocktails, fire lit ambiance, and a tropical escape in the heart of the Beltline.",
   alternates: {
     canonical: '/',
   },
-
   manifest: '/manifest.json',
-
   appleWebApp: {
     title: 'Jungle Bird',
   },
-
   icons: {
     icon: [
       { url: '/favicon.ico', type: 'image/x-icon' },
@@ -66,7 +63,6 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/apple-icon.png' }],
   },
-
   openGraph: {
     type: 'website',
     url: 'https://www.junglebirdtikiyyc.com/',
@@ -83,7 +79,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-
   twitter: {
     card: 'summary_large_image',
     title: 'Jungle Bird Tiki Lounge Calgary | Cocktails & Rum on 17th Ave',

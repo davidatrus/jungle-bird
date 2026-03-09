@@ -7,6 +7,20 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({
+      name: 'venueKey',
+      title: 'Venue',
+      type: 'string',
+      initialValue: 'jungle_bird',
+      options: {
+        list: [
+          {title: 'Jungle Bird', value: 'jungle_bird'},
+          {title: 'Prohibition', value: 'prohibition'},
+        ],
+        layout: 'radio',
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
       name: 'image',
       title: 'Image',
       type: 'image',

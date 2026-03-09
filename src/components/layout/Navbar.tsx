@@ -1,6 +1,9 @@
-// src/components/layout/Navbar.tsx  (SERVER)
 import NavbarClient from './Navbar.client';
 
-export default async function Navbar() {
-  return <NavbarClient />;
+export default async function Navbar({
+  venueKey,
+}: {
+  venueKey: 'jungle_bird' | 'prohibition';
+}) {
+  return <NavbarClient venueKey={venueKey} />;
 }

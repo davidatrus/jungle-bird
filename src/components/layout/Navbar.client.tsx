@@ -2,44 +2,66 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import ReservationModal from '@/components/shared/ReservationModal';
+import { getVenueConfig, type VenueKey } from '@/lib/venueConfig';
 
-const links = [
+const baseLinks = [
   { href: '/menu', label: 'Menu' },
   { href: '/gallery', label: 'Gallery' },
   { href: '/events', label: 'Events' },
   { href: '/contact', label: 'Contact' },
 ];
 
-export default function NavbarClient() {
+export default function NavbarClient({ venueKey }: { venueKey: VenueKey }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+
+  const config = getVenueConfig(venueKey);
+  const isProhibition = venueKey === 'prohibition';
 
   useEffect(() => {
     setOpen(false);
     setBookingOpen(false);
   }, [pathname]);
 
+  const base = config.basePath;
+
+  const links = useMemo(() => {
+    return baseLinks.map((l) => ({ ...l, href: `${base}${l.href}` }));
+  }, [base]);
+
+  const homeHref = base || '/';
+  const ariaHome =
+    venueKey === 'prohibition' ? 'Prohibition home' : 'Jungle Bird home';
+
   const linkClass =
-    'px-2 py-1 text-[12px] tracking-[0.12em] uppercase hover:opacity-80';
+    'px-2 py-1 text-[12px] tracking-[0.18em] uppercase hover:opacity-80';
 
   return (
     <header className="nav-glass sticky top-0 z-40 border-b">
-      <nav className="mx-auto grid h-12 max-w-7xl grid-cols-[auto_1fr_auto] items-center px-4 md:h-14 lg:px-6">
+      <nav
+        className={`mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center px-4 lg:px-6 ${
+          isProhibition ? 'h-16 md:h-[72px]' : 'h-12 md:h-14'
+        }`}
+      >
         <Link
-          href="/"
-          aria-label="Jungle Bird home"
+          href={homeHref}
+          aria-label={ariaHome}
           className="flex items-center justify-self-start"
         >
           <Image
-            src="/images/logo/icon.png"
-            alt="Jungle Bird Tiki Lounge YYC logo"
-            width={28}
-            height={28}
-            className="block h-8 w-8 md:h-10 md:w-10"
-            loading="lazy"
+            src={config.logo.src}
+            alt={config.logo.alt}
+            width={isProhibition ? 220 : 28}
+            height={isProhibition ? 80 : 28}
+            priority={isProhibition}
+            className={
+              isProhibition
+                ? 'block h-10 w-auto md:h-12'
+                : 'block h-8 w-8 md:h-10 md:w-10'
+            }
           />
         </Link>
 
@@ -67,7 +89,9 @@ export default function NavbarClient() {
             <button
               type="button"
               onClick={() => setBookingOpen(true)}
-              className="btn-pop btn-shadow brass-border nav-cta-btn rounded-full px-4 py-2 text-[12px] font-semibold"
+              className={`btn-pop btn-shadow rounded-full border border-[var(--line)] px-4 py-2 text-[12px] font-semibold uppercase ${
+                isProhibition ? 'tracking-[0.14em]' : ''
+              } nav-cta-btn`}
             >
               Book Now
             </button>
@@ -111,7 +135,7 @@ export default function NavbarClient() {
               <li key={l.href}>
                 <Link
                   href={l.href}
-                  className="block px-1 py-2 text-sm tracking-[0.12em] uppercase"
+                  className="block px-1 py-2 text-sm tracking-[0.14em] uppercase"
                   aria-current={active ? 'page' : undefined}
                 >
                   <span
@@ -133,7 +157,7 @@ export default function NavbarClient() {
                 setOpen(false);
                 setBookingOpen(true);
               }}
-              className="btn-pop brass-border nav-cta-btn inline-block w-full rounded-full px-4 py-2 text-center text-sm font-semibold"
+              className="nav-cta-btn btn-pop inline-block w-full rounded-full border border-[var(--line)] px-4 py-2 text-center text-sm font-semibold tracking-[0.14em] uppercase"
             >
               Book Now
             </button>
@@ -141,10 +165,10 @@ export default function NavbarClient() {
         </ul>
       </div>
 
-      {/* Render the shared modal ONCE */}
       <ReservationModal
         open={bookingOpen}
         onClose={() => setBookingOpen(false)}
+        venueKey={venueKey}
       />
     </header>
   );

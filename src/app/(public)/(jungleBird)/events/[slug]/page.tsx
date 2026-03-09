@@ -1,5 +1,6 @@
-//src/app/(public)/events/[slug]/page.tsx
+//src/app/(public)/(jungleBird)/events/[slug]/page.tsx
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { client } from '@/sanity/client';
 import { qEventBySlug } from '@/sanity/queries';
 import BuyTicketsForm from '@/components/events/BuyTicketsForm';
@@ -12,20 +13,20 @@ import { urlFor } from '@/sanity/image';
 import EventBody from '@/components/events/EventBody';
 import type { PortableTextBlock } from '@portabletext/types';
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
-
 import EventGalleryCarousel from '@/components/gallery/EventGalleryCarousel.client';
 
 export const revalidate = 60;
 
-// Calgary / Mountain Time (handles DST properly)
 const EVENT_TZ = process.env.EVENT_TZ || 'America/Edmonton';
+const VENUE_KEY = 'jungle_bird';
+const FALLBACK_OG = '/images/og/jungle-bird-og.webp';
 
 type SanityEvent = {
   _id: string;
   title: string;
   slug: string;
   venueKey: string;
-  status: string; // draft | on_sale | ended | cancelled
+  status: string;
   startsAt: string;
   endsAt?: string | null;
   shortDescription?: string | null;
@@ -58,6 +59,93 @@ function formatEventTime(iso: string) {
   }).format(new Date(iso));
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  const event = await client
+    .fetch<SanityEvent | null>(qEventBySlug, {
+      slug,
+      venueKey: VENUE_KEY,
+    })
+    .catch(() => null);
+
+  const fallbackTitle = 'Jungle Bird Events | Jungle Bird Tiki Lounge Calgary';
+  const fallbackDescription =
+    'Discover upcoming ticketed events, parties, and special nights at Jungle Bird Tiki Lounge Calgary.';
+
+  if (!event) {
+    return {
+      title: fallbackTitle,
+      description: fallbackDescription,
+      alternates: {
+        canonical: `/events/${slug}`,
+      },
+      openGraph: {
+        type: 'website',
+        url: `https://www.junglebirdtikiyyc.com/events/${slug}`,
+        title: fallbackTitle,
+        description: fallbackDescription,
+        images: [
+          {
+            url: FALLBACK_OG,
+            width: 1200,
+            height: 630,
+            alt: 'Jungle Bird Tiki Lounge Calgary',
+          },
+        ],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: fallbackTitle,
+        description: fallbackDescription,
+        images: [FALLBACK_OG],
+      },
+    };
+  }
+
+  const title = `${event.title} | Jungle Bird Events`;
+  const description =
+    event.shortDescription ||
+    'Join us at Jungle Bird Tiki Lounge Calgary for a one-of-a-kind event experience.';
+  const canonical = `/events/${event.slug}`;
+
+  const ogImage = event.heroImage
+    ? urlFor(event.heroImage).width(1200).height(630).fit('crop').url()
+    : FALLBACK_OG;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      type: 'website',
+      url: `https://www.junglebirdtikiyyc.com${canonical}`,
+      title,
+      description,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: event.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -66,14 +154,17 @@ export default async function EventDetailPage({
   const { slug } = await params;
 
   const event = await client
-    .fetch<SanityEvent | null>(qEventBySlug, { slug })
+    .fetch<SanityEvent | null>(qEventBySlug, {
+      slug,
+      venueKey: VENUE_KEY,
+    })
     .catch(() => null);
 
   if (!event) return notFound();
 
-  // show on_sale + ended, hide cancelled + draft
-  if (event.status === 'cancelled' || event.status === 'draft')
+  if (event.status === 'cancelled' || event.status === 'draft') {
     return notFound();
+  }
 
   const summary =
     event.status === 'on_sale'
@@ -87,11 +178,9 @@ export default async function EventDetailPage({
     event.ticketTypes?.[0]?.salesEndAt ??
     null;
 
-  const fallbackOg = '/images/og/jungle-bird-og.webp';
-
   const heroUrl = event.heroImage
     ? urlFor(event.heroImage).width(1600).height(900).fit('crop').url()
-    : fallbackOg;
+    : FALLBACK_OG;
 
   const eventDay = formatEventDay(event.startsAt);
   const startTime = formatEventTime(event.startsAt);

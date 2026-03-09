@@ -1,12 +1,23 @@
 :root {
-  /* Vintage Rum — v2 */
+  /* Jungle Bird default */
   --bg: #1b1612;
   --surface: #231b16;
   --text: #efe7d8;
   --muted: #6e4b3a;
-  --line: #c69c6d; /* brass */
-  --cta: #e36e4b; /* bitters/orange peel */
+  --line: #c69c6d;
+  --cta: #e36e4b;
+  --cta-text: #1b1612;
+  --ring: var(--line);
+}
 
-  /* helpers */
+/* Prohibition theme */
+[data-venue='prohibition'] {
+  --bg: #090b11;
+  --surface: #10141c;
+  --text: #f4ead9;
+  --muted: #c3a27a;
+  --line: #d1aa4b;
+  --cta: #d8b44f;
+  --cta-text: #111317;
   --ring: var(--line);
 }

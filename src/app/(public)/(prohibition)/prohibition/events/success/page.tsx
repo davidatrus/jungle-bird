@@ -1,0 +1,82 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { pool } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
+
+export default async function ProhibitionSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>;
+}) {
+  const { session_id } = await searchParams;
+  const sessionId = session_id;
+
+  if (!sessionId) redirect('/prohibition/events');
+
+  const res = await pool.query(
+    `
+    select status
+    from public.orders
+    where stripe_checkout_session_id = $1
+    limit 1
+    `,
+    [sessionId],
+  );
+
+  const row = res.rows[0] as { status: string } | undefined;
+
+  if (!row) {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 py-14">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-8">
+          <h1 className="text-3xl font-bold text-white">Purchase confirmed</h1>
+          <p className="mt-3 text-white/80">
+            We are processing your order now. If you do not see your tickets
+            within a few minutes, check your spam folder.
+          </p>
+
+          <p className="mt-6 text-xs break-all text-white/50">
+            Session: {sessionId}
+          </p>
+
+          <Link
+            href="/prohibition/events"
+            className="btn-pop mt-8 inline-block rounded-xl bg-[var(--cta)] px-5 py-3 text-sm font-semibold text-[#1b1612]"
+          >
+            Back to events
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (row.status === 'refunded' || row.status === 'failed') {
+    redirect(
+      `/prohibition/events/refunded?session_id=${encodeURIComponent(sessionId)}`,
+    );
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-14">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-8">
+        <h1 className="text-3xl font-bold text-white">Purchase confirmed</h1>
+        <p className="mt-3 text-white/80">
+          Your tickets are being emailed to you now. If you do not see them
+          within a few minutes, check your spam folder.
+        </p>
+
+        <p className="mt-6 text-xs break-all text-white/50">
+          Session: {sessionId}
+        </p>
+
+        <Link
+          href="/prohibition/events"
+          className="btn-pop mt-8 inline-block rounded-xl bg-[var(--cta)] px-5 py-3 text-sm font-semibold text-[#1b1612]"
+        >
+          Back to events
+        </Link>
+      </div>
+    </main>
+  );
+}

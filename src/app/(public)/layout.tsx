@@ -17,7 +17,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       className={`${ui.variable} ${display.variable}`}
       style={{ background: 'var(--bg)', color: 'var(--text)' }}
     >
-      <Navbar />
       {children}
     </div>
   );

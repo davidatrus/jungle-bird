@@ -1,31 +1,97 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { posts } from '@/data/posts';
+import { posts, type Post, type VenueKey } from '@/data/posts';
 
-// simple helpers
-const getPost = (slug: string) => posts.find((p) => p.slug === slug);
+const VENUE_KEY: VenueKey = 'jungle_bird';
+
+const venuePosts = posts.filter((p) => p.venueKey === VENUE_KEY);
+
+const getPost = (slug: string) => venuePosts.find((p) => p.slug === slug);
+
 const getSiblings = (slug: string) => {
-  const i = posts.findIndex((p) => p.slug === slug);
+  const i = venuePosts.findIndex((p) => p.slug === slug);
   return {
-    prev: i > 0 ? posts[i - 1] : null,
-    next: i < posts.length - 1 ? posts[i + 1] : null,
+    prev: i > 0 ? venuePosts[i - 1] : null,
+    next: i < venuePosts.length - 1 ? venuePosts[i + 1] : null,
   };
 };
-// very small helper: turn **text** into <strong>text</strong>
-const renderInline = (text: string) => {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {
-    const match = part.match(/^\*\*(.+)\*\*$/);
-    if (match) {
-      return <strong key={idx}>{match[1]}</strong>;
+    const strongMatch = part.match(/^\*\*(.+)\*\*$/);
+    if (strongMatch) {
+      return <strong key={idx}>{strongMatch[1]}</strong>;
     }
+
+    const emMatch = part.match(/^\*(.+)\*$/);
+    if (emMatch) {
+      return <em key={idx}>{emMatch[1]}</em>;
+    }
+
     return <span key={idx}>{part}</span>;
   });
-};
+}
 
-// SEO + social previews per blog post
+function renderContentLine(line: string, i: number) {
+  const trimmed = line.trim();
+
+  const isNumberedHeading = /^[0-9]+\.\s/.test(trimmed);
+  const isMetaLine = /^\(.+\)$/.test(trimmed);
+  const isBullet = /^•\s/.test(trimmed);
+  const isSimpleHeading =
+    trimmed.length < 80 && !/[.?!]/.test(trimmed) && !isMetaLine && !isBullet;
+
+  const ctaPrefix = 'Ready to see it for yourself? ';
+  if (trimmed.startsWith(ctaPrefix)) {
+    const rest = trimmed.slice(ctaPrefix.length);
+    return (
+      <p key={i} className="text-[var(--text)]">
+        {ctaPrefix}
+        <strong>{rest}</strong>
+      </p>
+    );
+  }
+
+  if (isNumberedHeading || isSimpleHeading) {
+    return (
+      <h2 key={i} className="section-title mt-8 text-2xl md:text-3xl">
+        {renderInline(trimmed)}
+      </h2>
+    );
+  }
+
+  if (isMetaLine) {
+    const inner = trimmed.replace(/^\(|\)$/g, '');
+    return (
+      <p
+        key={i}
+        className="text-sm italic opacity-75"
+        style={{ color: 'var(--muted)' }}
+      >
+        {renderInline(inner)}
+      </p>
+    );
+  }
+
+  if (isBullet) {
+    const inner = trimmed.replace(/^•\s/, '');
+    return (
+      <li key={i} className="ml-5 list-disc" style={{ color: 'var(--text)' }}>
+        {renderInline(inner)}
+      </li>
+    );
+  }
+
+  return (
+    <p key={i} className="text-[var(--text)]">
+      {renderInline(trimmed)}
+    </p>
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -38,7 +104,6 @@ export async function generateMetadata({
   const fallbackDescription =
     "Stories from Jungle Bird, Calgary's tiki-cave lounge on 17th Ave.";
 
-  // If the slug doesn't match any post, still return sensible metadata
   if (!p) {
     return {
       title: fallbackTitle,
@@ -107,6 +172,7 @@ export default async function PostPage({
 }) {
   const { slug } = await params;
   const post = getPost(slug);
+
   if (!post) {
     return (
       <div className="py-20 text-center">
@@ -123,21 +189,21 @@ export default async function PostPage({
 
   const { prev, next } = getSiblings(post.slug);
 
-  // If your posts don't yet have “content”, we render tasteful filler.
   const paras: string[] = post.content ?? [
     'The 1920s, often called the Roaring Twenties, were a decade of contrast—euphoria and excess, elegance and edge. In that spirit, we raise a glass to stories worth sipping.',
     'Speakeasies, swing, and shimmering art deco set the tone. Bartenders chased balance and bite, balancing bright citrus with dusky amaro, velvet foam with crystalline ice.',
     'Tonight we revisit a classic, reimagined for modern palates—stirred with restraint, garnished with a wink.',
   ];
 
+  const bulletLines = paras.filter((line) => /^•\s/.test(line.trim()));
+  const normalLines = paras.filter((line) => !/^•\s/.test(line.trim()));
+
   return (
-    <article className="prose prose-invert max-w-none">
-      {/* Title */}
-      <h1 className="font-display !text-3xl !leading-tight md:!text-4xl">
+    <article className="max-w-none">
+      <h1 className="section-title text-4xl leading-tight md:text-5xl">
         {post.title}
       </h1>
 
-      {/* Hero */}
       {post.image && (
         <div className="my-6 md:my-8">
           <Image
@@ -145,107 +211,55 @@ export default async function PostPage({
             alt={post.title}
             width={1600}
             height={900}
-            className="brass-border w-full rounded-xl border"
+            className="brass-border w-full rounded-2xl border"
             priority
           />
         </div>
       )}
 
-      {/* Body */}
-      <section className="not-prose font-ui space-y-5 text-[15px] leading-7 md:text-[16px] md:leading-8">
-        {paras.map((t, i) => {
-          const trimmed = t.trim();
+      <section className="font-ui space-y-5 text-[16px] leading-8 md:text-[17px] md:leading-9">
+        {normalLines.map((t, i) => renderContentLine(t, i))}
 
-          // Lines like "1. Nutty Tourist"
-          const isNumberedHeading = /^[0-9]+\.\s/.test(trimmed);
-
-          // Lines like "(Signature Cave Cocktails – Page 2)"
-          const isMetaLine = /^\(.+\)$/.test(trimmed);
-
-          // Generic short, punctuation-free headings
-          const isSimpleHeading =
-            trimmed.length < 80 && !/[.?!]/.test(trimmed) && !isMetaLine;
-
-          // BLOG 1 CTA line – bold the second half only
-          const ctaPrefix = 'Ready to see it for yourself? ';
-          if (trimmed.startsWith(ctaPrefix)) {
-            const rest = trimmed.slice(ctaPrefix.length);
-            return (
-              <p key={i} style={{ color: 'var(--text)' }}>
-                {ctaPrefix}
-                <strong>{rest}</strong>
-              </p>
-            );
-          }
-
-          // Main headings (drink names, closing title, etc.)
-          if (isNumberedHeading || isSimpleHeading) {
-            return (
-              <h2
-                key={i}
-                className="font-display mt-6 text-xl font-semibold md:text-2xl"
-                style={{ color: 'var(--text)' }}
-              >
-                {renderInline(trimmed)}
-              </h2>
-            );
-          }
-
-          // Meta line under each drink name – smaller + italic
-          if (isMetaLine) {
-            const inner = trimmed.replace(/^\(|\)$/g, '');
-            return (
-              <p
-                key={i}
-                className="text-sm italic opacity-75"
-                style={{ color: 'var(--text)' }}
-              >
-                {renderInline(inner)}
-              </p>
-            );
-          }
-
-          // Default paragraph
-          return (
-            <p key={i} style={{ color: 'var(--text)' }}>
-              {renderInline(trimmed)}
-            </p>
-          );
-        })}
+        {bulletLines.length > 0 && (
+          <ul className="space-y-3 pl-2">
+            {bulletLines.map((t, i) => renderContentLine(t, 1000 + i))}
+          </ul>
+        )}
       </section>
 
-      {/* Prev / Next */}
-      <nav className="not-prose mt-12 flex items-center justify-between gap-4 md:mt-16">
+      <nav className="mt-12 grid gap-4 border-t pt-8 md:mt-16 md:grid-cols-2">
         {prev ? (
           <Link
             href={`/blog/${prev.slug}`}
-            className="group brass-border inline-flex items-center gap-2 rounded-full px-3 py-2"
-            style={{ color: 'var(--text)' }}
+            className="brass-border rounded-2xl border p-4 transition hover:bg-white/5"
             aria-label={`Previous: ${prev.title}`}
           >
-            <span aria-hidden>‹</span>
-            <span className="opacity-80 transition group-hover:opacity-100">
+            <div className="mb-2 text-xs tracking-[0.18em] uppercase opacity-70">
+              Previous Article
+            </div>
+            <div className="section-title text-xl leading-snug">
               {prev.title}
-            </span>
+            </div>
           </Link>
         ) : (
-          <span />
+          <div />
         )}
 
         {next ? (
           <Link
             href={`/blog/${next.slug}`}
-            className="group brass-border inline-flex items-center gap-2 rounded-full px-3 py-2"
-            style={{ color: 'var(--text)' }}
+            className="brass-border rounded-2xl border p-4 text-left transition hover:bg-white/5 md:ml-auto"
             aria-label={`Next: ${next.title}`}
           >
-            <span className="opacity-80 transition group-hover:opacity-100">
+            <div className="mb-2 text-xs tracking-[0.18em] uppercase opacity-70">
+              Next Article
+            </div>
+            <div className="section-title text-xl leading-snug">
               {next.title}
-            </span>
-            <span aria-hidden>›</span>
+            </div>
           </Link>
         ) : (
-          <span />
+          <div />
         )}
       </nav>
     </article>

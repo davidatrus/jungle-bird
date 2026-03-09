@@ -1,9 +1,10 @@
-// src/lib/ticketsEmail.ts
 import QRCode from 'qrcode';
+import { getVenueConfig, type VenueKey } from '@/lib/venueConfig';
 
 type TicketRow = { ticket_code: string };
 
 type BuildEmailArgs = {
+  venueKey?: VenueKey;
   title: string;
   startsAt: string | Date | null;
   endsAt: string | Date | null;
@@ -37,22 +38,41 @@ function formatDateRange(
 }
 
 function getBaseUrl() {
-  // IMPORTANT:
-  // Set this on the server env (Vercel + local):
-  // local: SITE_URL=http://localhost:3000
-  // prod:  SITE_URL=https://junglebirdtikiyyc.com
   const base =
     process.env.SITE_URL ||
-    process.env.TICKETS_BASE_URL || // ok as fallback, but SITE_URL is better for server
+    process.env.TICKETS_BASE_URL ||
     'http://localhost:3000';
 
   return base.replace(/\/$/, '');
+}
+
+function getBrandCopy(venueKey: VenueKey) {
+  const config = getVenueConfig(venueKey);
+
+  if (venueKey === 'prohibition') {
+    return {
+      emailHeading: `Your ${config.brandName} tickets`,
+      confirmationLine: 'your payment is confirmed. Your tickets are below.',
+      doorLine: 'Present this QR code at the door for entry.',
+      helperLine:
+        'Keep this email handy. If scanning fails, staff can manually enter the ticket code.',
+    };
+  }
+
+  return {
+    emailHeading: `Your ${config.brandName} tickets`,
+    confirmationLine: 'your payment is confirmed. Your tickets are below.',
+    doorLine: 'Present this QR code at the door for entry.',
+    helperLine:
+      'Keep this email handy. If scanning fails, staff can manually enter the ticket code.',
+  };
 }
 
 export async function buildTicketsEmailPayload(
   args: BuildEmailArgs,
 ): Promise<{ html: string; attachments: ResendAttachment[] }> {
   const {
+    venueKey = 'jungle_bird',
     title,
     startsAt,
     endsAt,
@@ -65,15 +85,17 @@ export async function buildTicketsEmailPayload(
 
   const subtotalCents = unitPriceCents * quantity;
   const baseUrl = getBaseUrl();
+  const config = getVenueConfig(venueKey);
+  const brand = getBrandCopy(venueKey);
+  const eventBasePath = `${config.basePath}/events`;
 
   const attachments: ResendAttachment[] = [];
   const ticketBlocks: string[] = [];
 
   for (let i = 0; i < tickets.length; i++) {
     const code = tickets[i].ticket_code;
-    const cid = `ticket-${i + 1}`; // must be unique per ticket
+    const cid = `ticket-${i + 1}`;
 
-    // QR encodes the code for now (later: encode a scan URL)
     const qrValue = `${baseUrl}/admin/scan?code=${code}`;
 
     const pngBuffer = await QRCode.toBuffer(qrValue, {
@@ -90,7 +112,6 @@ export async function buildTicketsEmailPayload(
       content_id: cid,
     });
 
-    // Fallback link (works even if images are blocked)
     const qrUrl = `${baseUrl}/api/tickets/qr/${code}`;
 
     ticketBlocks.push(`
@@ -111,7 +132,7 @@ export async function buildTicketsEmailPayload(
         </div>
 
         <div style="margin-top:10px;color:#666;font-size:13px;">
-          Present this QR code at the door for entry.
+          ${brand.doorLine}
         </div>
 
         <div style="margin-top:10px;color:#666;font-size:12px;">
@@ -124,8 +145,8 @@ export async function buildTicketsEmailPayload(
 
   const html = `
   <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:680px;margin:0 auto;padding:24px;">
-    <h1 style="margin:0 0 8px 0;font-size:32px;">Your Jungle Bird tickets</h1>
-    <p style="margin:0 0 18px 0;color:#444;">Hi ${buyerName}, your payment is confirmed. Your tickets are below.</p>
+    <h1 style="margin:0 0 8px 0;font-size:32px;">${brand.emailHeading}</h1>
+    <p style="margin:0 0 18px 0;color:#444;">Hi ${buyerName}, ${brand.confirmationLine}</p>
 
     <div style="border:1px solid #eee;border-radius:12px;padding:16px;margin:16px 0;">
       <div style="font-size:22px;font-weight:800;margin-bottom:6px;">${title}</div>
@@ -141,7 +162,12 @@ export async function buildTicketsEmailPayload(
     ${ticketBlocks.join('')}
 
     <p style="margin-top:18px;color:#666;font-size:13px;">
-      Keep this email handy. If scanning fails, staff can manually enter the ticket code.
+      ${brand.helperLine}
+    </p>
+
+    <p style="margin-top:10px;color:#666;font-size:12px;">
+      Event page:
+      <a href="${baseUrl}${eventBasePath}" style="color:#111;text-decoration:underline;">${baseUrl}${eventBasePath}</a>
     </p>
   </div>
   `;

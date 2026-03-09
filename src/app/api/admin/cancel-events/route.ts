@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { pool } from '@/lib/db';
 import { Resend } from 'resend';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
+import type { VenueKey } from '@/lib/venueConfig';
 
 export const runtime = 'nodejs';
 
@@ -18,9 +19,25 @@ type Body = {
   cancelEvenIfRefundsFail?: boolean;
 };
 
+function normalizeVenueKey(value: string | null | undefined): VenueKey {
+  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
+}
+
+function getVenueEmailBranding(venueKey: VenueKey) {
+  if (venueKey === 'prohibition') {
+    return {
+      from: 'Prohibition Tickets <tickets@junglebirdtikiyyc.com>',
+      signoff: 'Prohibition',
+    };
+  }
+
+  return {
+    from: 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>',
+    signoff: 'Jungle Bird',
+  };
+}
+
 function getAllowedOrigin() {
-  // Dev default: Sanity Studio local
-  // In prod you can set SANITY_STUDIO_ORIGIN to your hosted studio origin.
   return (process.env.SANITY_STUDIO_ORIGIN || 'http://localhost:3333').replace(
     /\/+$/,
     '',
@@ -98,10 +115,6 @@ export async function POST(req: Request) {
   }
 
   const startedAt = Date.now();
-
-  // ------------------------------------------------------------
-  // Step A) Short DB transaction: lock event + fetch paid orders
-  // ------------------------------------------------------------
   const client = await pool.connect();
 
   let ev: {
@@ -110,6 +123,7 @@ export async function POST(req: Request) {
     title: string;
     starts_at: string;
     status: string;
+    venue_key: string | null;
   };
 
   let paidOrders: Array<{
@@ -127,7 +141,7 @@ export async function POST(req: Request) {
 
     const evRes = await client.query(
       `
-      select id, sanity_event_id, title, starts_at, status
+      select id, sanity_event_id, title, starts_at, status, venue_key
       from public.events
       where ${eventId ? 'id = $1' : 'sanity_event_id = $1'}
       limit 1
@@ -168,7 +182,12 @@ export async function POST(req: Request) {
       return json({
         ok: true,
         dryRun: true,
-        event: { id: ev.id, title: ev.title, status: ev.status },
+        event: {
+          id: ev.id,
+          title: ev.title,
+          status: ev.status,
+          venue_key: ev.venue_key,
+        },
         wouldRefundOrders: paidOrders.map((o) => o.id),
       });
     }
@@ -195,9 +214,9 @@ export async function POST(req: Request) {
     client.release();
   }
 
-  // ------------------------------------------------------------
-  // Step B) Refund loop
-  // ------------------------------------------------------------
+  const venueKey = normalizeVenueKey(ev.venue_key);
+  const branding = getVenueEmailBranding(venueKey);
+
   const results: Array<{
     orderId: string;
     refunded: boolean;
@@ -232,6 +251,7 @@ export async function POST(req: Request) {
         metadata: {
           order_id: o.id,
           event_id: ev.id,
+          venue_key: venueKey,
           reason: 'event_cancelled',
         },
       });
@@ -277,11 +297,10 @@ export async function POST(req: Request) {
 
       let emailSent = false;
       try {
-        const from = 'Jungle Bird Tickets <tickets@junglebirdtikiyyc.com>';
         const buyerName = `${o.buyer_first_name} ${o.buyer_last_name}`.trim();
 
         await resend.emails.send({
-          from,
+          from: branding.from,
           to: o.buyer_email,
           subject: `Event cancelled: ${ev.title} (Refund started)`,
           html: `
@@ -295,7 +314,7 @@ export async function POST(req: Request) {
               <p style="margin:0 0 12px; color:#666;">
                 Refund reference: ${refund.id}
               </p>
-              <p style="margin:0;">Thanks,<br/>Jungle Bird</p>
+              <p style="margin:0;">Thanks,<br/>${branding.signoff}</p>
             </div>
           `,
         });
@@ -336,7 +355,12 @@ export async function POST(req: Request) {
   return json({
     ok: failures === 0,
     ms: Date.now() - startedAt,
-    event: { id: ev.id, title: ev.title, status: ev.status },
+    event: {
+      id: ev.id,
+      title: ev.title,
+      status: ev.status,
+      venue_key: ev.venue_key,
+    },
     paidOrdersFound: paidOrders.length,
     refundedCount: results.filter((r) => r.refunded).length,
     failedCount: failures,

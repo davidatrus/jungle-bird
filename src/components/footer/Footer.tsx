@@ -4,6 +4,8 @@ import { qSettings } from '@/sanity/queries';
 
 export const revalidate = 60;
 
+type VenueKey = 'jungle_bird' | 'prohibition';
+
 type Hour = { days: string; time: string };
 type Social = {
   facebook?: string;
@@ -20,8 +22,16 @@ type Settings = {
   social?: Social;
 };
 
-export default async function Footer() {
-  const s = await client.fetch<Settings>(qSettings).catch(() => null);
+export default async function Footer({
+  venueKey = 'jungle_bird',
+}: {
+  venueKey?: VenueKey;
+}) {
+  const s = await client
+    .fetch<Settings>(qSettings, { venueKey })
+    .catch(() => null);
+
+  const brandName = venueKey === 'prohibition' ? 'Prohibition' : 'Jungle Bird';
 
   return (
     <footer
@@ -107,7 +117,7 @@ export default async function Footer() {
         className="mt-8 text-center text-xs"
         style={{ color: 'var(--muted)' }}
       >
-        © {new Date().getFullYear()} Jungle Bird
+        © {new Date().getFullYear()} {brandName}
       </div>
     </footer>
   );

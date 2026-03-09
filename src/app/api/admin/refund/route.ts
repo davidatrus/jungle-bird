@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { pool } from '@/lib/db';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
+import type { VenueKey } from '@/lib/venueConfig';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +18,10 @@ function getAuthToken(req: Request) {
   const h = req.headers.get('authorization') || '';
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1] ?? null;
+}
+
+function normalizeVenueKey(value: string | null | undefined): VenueKey {
+  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
 }
 
 export async function POST(req: Request) {
@@ -51,16 +56,18 @@ export async function POST(req: Request) {
   try {
     await client.query('begin');
 
-    // Lock order row to read details needed for Stripe refund
     const orderRes = await client.query(
       `
       select
-        id,
-        status,
-        stripe_checkout_session_id,
-        stripe_payment_intent_id
-      from public.orders
-      where id = $1
+        o.id,
+        o.status,
+        o.stripe_checkout_session_id,
+        o.stripe_payment_intent_id,
+        e.title as event_title,
+        e.venue_key
+      from public.orders o
+      join public.events e on e.id = o.event_id
+      where o.id = $1
       limit 1
       for update
       `,
@@ -77,15 +84,20 @@ export async function POST(req: Request) {
       status: string;
       stripe_checkout_session_id: string;
       stripe_payment_intent_id: string | null;
+      event_title: string | null;
+      venue_key: string | null;
     };
 
-    // Idempotent exit if already refunded/cancelled
+    const venueKey = normalizeVenueKey(order.venue_key);
+
     if (order.status === 'refunded' || order.status === 'cancelled') {
       await client.query('commit');
       return NextResponse.json({
         ok: true,
         orderId: order.id,
         status: order.status,
+        event_title: order.event_title,
+        venue_key: venueKey,
         message: 'Order already refunded/cancelled',
       });
     }
@@ -95,12 +107,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: `Order status must be 'paid' to refund (got '${order.status}')`,
+          event_title: order.event_title,
+          venue_key: venueKey,
         },
         { status: 400 },
       );
     }
 
-    // Determine PaymentIntent
     let paymentIntentId = order.stripe_payment_intent_id;
     if (!paymentIntentId) {
       const session = await stripe.checkout.sessions.retrieve(
@@ -112,19 +125,25 @@ export async function POST(req: Request) {
     if (!paymentIntentId) {
       await client.query('rollback');
       return NextResponse.json(
-        { error: 'Missing Stripe payment_intent_id (cannot refund)' },
+        {
+          error: 'Missing Stripe payment_intent_id (cannot refund)',
+          event_title: order.event_title,
+          venue_key: venueKey,
+        },
         { status: 400 },
       );
     }
 
-    // Refund in Stripe
     const refund = await stripe.refunds.create({
       payment_intent: paymentIntentId,
       reason: 'requested_by_customer',
-      metadata: { order_id: order.id, reason },
+      metadata: {
+        order_id: order.id,
+        venue_key: venueKey,
+        reason,
+      },
     });
 
-    // Apply refund consistently in DB (void tickets, sold_count, etc.)
     const applied = await applyRefundToOrder(client, {
       orderId: order.id,
       reason,
@@ -137,7 +156,12 @@ export async function POST(req: Request) {
 
     if (!applied.ok) {
       return NextResponse.json(
-        { ok: false, error: applied.error },
+        {
+          ok: false,
+          error: applied.error,
+          event_title: order.event_title,
+          venue_key: venueKey,
+        },
         { status: 400 },
       );
     }
@@ -145,6 +169,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       orderId: order.id,
+      event_title: order.event_title,
+      venue_key: venueKey,
       stripe_refund_id: refund.id,
       voided_tickets: applied.voidedTickets,
       refunded_amount_cents: refund.amount ?? null,

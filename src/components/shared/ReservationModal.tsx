@@ -1,30 +1,39 @@
+//src/components/shared/ReservationModal.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-
-const OPENTABLE_SCRIPT_SRC =
-  '//www.opentable.ca/widget/reservation/loader?rid=1471021&type=standard&theme=standard&color=1&dark=false&iframe=true&domain=ca&lang=en-CA&newtab=false&ot_source=Restaurant%20website&cfe=true';
+import { getVenueConfig, type VenueKey } from '@/lib/venueConfig';
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  venueKey?: VenueKey;
 };
 
-export default function ReservationModal({ open, onClose }: Props) {
+export default function ReservationModal({
+  open,
+  onClose,
+  venueKey = 'jungle_bird',
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+
+  const config = useMemo(() => getVenueConfig(venueKey), [venueKey]);
+  const widgetScriptSrc = config.reservations.widgetScriptSrc;
+  const fallbackMessage =
+    config.reservations.fallbackMessage ||
+    'Reservations are not available right now. Please try again later.';
 
   useEffect(() => {
     if (!open) return;
 
-    // lock scroll
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // escape key closes
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
+
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
@@ -35,15 +44,16 @@ export default function ReservationModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    if (!widgetScriptSrc) return;
+
     const host = hostRef.current;
     if (!host) return;
 
-    // hard reset container so we never get duplicates
     host.innerHTML = '';
 
     const script = document.createElement('script');
     script.type = 'text/javascript';
-    script.src = OPENTABLE_SCRIPT_SRC;
+    script.src = widgetScriptSrc;
     script.async = true;
 
     host.appendChild(script);
@@ -51,7 +61,7 @@ export default function ReservationModal({ open, onClose }: Props) {
     return () => {
       host.innerHTML = '';
     };
-  }, [open]);
+  }, [open, widgetScriptSrc]);
 
   if (!open) return null;
 
@@ -60,7 +70,7 @@ export default function ReservationModal({ open, onClose }: Props) {
       className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Reservations"
+      aria-label={`${config.shortName} reservations`}
       onClick={onClose}
     >
       <div
@@ -69,7 +79,7 @@ export default function ReservationModal({ open, onClose }: Props) {
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--line)] bg-[var(--surface)] px-4 py-3">
           <p className="text-sm font-semibold tracking-[0.12em] uppercase">
-            Reservations
+            {config.shortName} Reservations
           </p>
           <button
             type="button"
@@ -81,12 +91,19 @@ export default function ReservationModal({ open, onClose }: Props) {
         </div>
 
         <div className="p-4">
-          <div ref={hostRef} />
+          {widgetScriptSrc ? (
+            <div ref={hostRef} />
+          ) : (
+            <div className="rounded-xl border border-[var(--line)] bg-black/20 p-4 text-sm text-[var(--text)]">
+              {fallbackMessage}
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-4 text-xs opacity-80">
-          If the widget does not load, try disabling strict tracking protection
-          or open in a private window.
+          {widgetScriptSrc
+            ? 'If the widget does not load, try disabling strict tracking protection or open in a private window.'
+            : 'Reservation widget coming soon.'}
         </div>
       </div>
     </div>,

@@ -1,4 +1,3 @@
-// src/components/events/EventCard.tsx
 import Link from 'next/link';
 import { urlFor } from '@/sanity/image';
 import { computeEventState } from '@/lib/eventState';
@@ -21,6 +20,7 @@ type SanityEvent = {
   _id: string;
   title?: string;
   slug?: SanitySlug;
+  venueKey?: string;
   status?: string;
   startsAt?: string;
   endsAt?: string | null;
@@ -36,7 +36,6 @@ function formatEventDateTime(iso?: string | null) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
 
-  // Similar to: 'EEE, MMM d, h:mm a'
   return new Intl.DateTimeFormat('en-CA', {
     weekday: 'short',
     month: 'short',
@@ -62,9 +61,15 @@ function safeNumber(v: unknown, fallback = 0) {
 
 function getSlugValue(slug: SanitySlug): string {
   if (typeof slug === 'string') return slug;
-  if (slug && typeof slug === 'object' && typeof slug.current === 'string')
+  if (slug && typeof slug === 'object' && typeof slug.current === 'string') {
     return slug.current;
+  }
   return '';
+}
+
+function getEventHref(venueKey: string | undefined, slug: string) {
+  const base = venueKey === 'prohibition' ? '/prohibition/events' : '/events';
+  return slug ? `${base}/${slug}` : base;
 }
 
 function computeBadges(opts: {
@@ -93,7 +98,6 @@ function computeBadges(opts: {
     if (opts.remainingCount <= 0) badges.push('Sold Out');
   }
 
-  // Happening soon (within 72h) — use raw Date math (timezone doesn’t matter for this comparison)
   if (
     status === 'on_sale' &&
     !opts.salesEnded &&
@@ -107,7 +111,6 @@ function computeBadges(opts: {
     }
   }
 
-  // New (on sale in last 72h)
   if (
     status === 'on_sale' &&
     !opts.salesEnded &&
@@ -132,6 +135,7 @@ export default function EventCard({
   remainingCount: number | null;
 }) {
   const slug = getSlugValue(event.slug);
+  const href = getEventHref(event.venueKey, slug);
 
   const title = event.title || 'Event';
   const firstTT = event.ticketTypes?.[0];
@@ -176,7 +180,7 @@ export default function EventCard({
 
   return (
     <Link
-      href={slug ? `/events/${slug}` : '/events'}
+      href={href}
       aria-disabled={!slug}
       className={`group brass-border block overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:bg-white/10 ${
         !slug ? 'pointer-events-none opacity-60' : ''
@@ -184,7 +188,6 @@ export default function EventCard({
     >
       {imageSrc ? (
         <div className="relative">
-          {/* Keeping <img> since you said warnings are ok */}
           <img
             src={imageSrc}
             alt={title}
