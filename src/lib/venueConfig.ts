@@ -120,7 +120,7 @@ const venueConfigs: Record<VenueKey, VenueConfig> = {
       subtext:
         'Have a Look at Our Classic & Remastered Cocktails, Exquisite Eats, and Beyond',
       href: '/prohibition/menu',
-      backgroundImageSrc: '/images/misc/menu-bg.jpg',
+      backgroundImageSrc: '/images/misc/menu-bg-pb.webp',
     },
     location: {
       imageSrc: '/images/misc/prohibition-map.webp',

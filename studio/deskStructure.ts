@@ -6,8 +6,14 @@ const VENUES = [
   {title: 'Prohibition', key: 'prohibition'},
 ] as const
 
+function templateId(type: string, venueKey: string) {
+  return `${type}-${venueKey === 'prohibition' ? 'prohibition' : 'jungle-bird'}`
+}
+
 function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, venueTitle: string) {
   const filterByVenue = (type: string) => `_type == "${type}" && venueKey == $venueKey`
+  const templateFor = (type: string) =>
+    S.initialValueTemplateItem(templateId(type, venueKey), {venueKey})
 
   return S.listItem()
     .title(venueTitle)
@@ -22,7 +28,8 @@ function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, ven
                 .title('Site Settings')
                 .schemaType('settings')
                 .filter(filterByVenue('settings'))
-                .params({venueKey}),
+                .params({venueKey})
+                .initialValueTemplates([templateFor('settings')]),
             ),
 
           S.divider(),
@@ -34,7 +41,8 @@ function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, ven
                 .title('Menu')
                 .schemaType('menu')
                 .filter(filterByVenue('menu'))
-                .params({venueKey}),
+                .params({venueKey})
+                .initialValueTemplates([templateFor('menu')]),
             ),
 
           S.listItem()
@@ -44,7 +52,8 @@ function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, ven
                 .title('Gallery')
                 .schemaType('galleryImage')
                 .filter(filterByVenue('galleryImage'))
-                .params({venueKey}),
+                .params({venueKey})
+                .initialValueTemplates([templateFor('galleryImage')]),
             ),
 
           S.listItem()
@@ -54,7 +63,8 @@ function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, ven
                 .title('FAQ')
                 .schemaType('faq')
                 .filter(filterByVenue('faq'))
-                .params({venueKey}),
+                .params({venueKey})
+                .initialValueTemplates([templateFor('faq')]),
             ),
 
           S.listItem()
@@ -64,7 +74,8 @@ function venueSection(S: Parameters<StructureResolver>[0], venueKey: string, ven
                 .title('Events')
                 .schemaType('event')
                 .filter(filterByVenue('event'))
-                .params({venueKey}),
+                .params({venueKey})
+                .initialValueTemplates([templateFor('event')]),
             ),
         ]),
     )
@@ -76,8 +87,6 @@ export const deskStructure: StructureResolver = (S) =>
     .items([
       ...VENUES.map((v) => venueSection(S, v.key, v.title)),
       S.divider(),
-
-      // Optional: keep other doc types visible (but hide the venue-specific ones to prevent confusion)
       ...S.documentTypeListItems().filter((listItem) => {
         const id = listItem.getId?.()
         return !['settings', 'menu', 'galleryImage', 'faq', 'event'].includes(String(id))

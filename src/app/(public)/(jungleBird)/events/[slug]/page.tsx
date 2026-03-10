@@ -1,4 +1,3 @@
-//src/app/(public)/(jungleBird)/events/[slug]/page.tsx
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { client } from '@/sanity/client';
@@ -258,30 +257,33 @@ export default async function EventDetailPage({
           )}
         </aside>
 
-        <section className="order-2 min-w-0 rounded-2xl border border-white/10 bg-white/5 p-6 lg:order-1">
-          <h2 className="text-xl font-semibold text-white">Details</h2>
+        <div className="order-2 min-w-0 space-y-6 lg:order-1">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <h2 className="text-xl font-semibold text-white">Details</h2>
 
-          {event.body ? (
-            <div className="mt-4">
-              <EventBody value={event.body} />
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-white/70">Details coming soon.</p>
-          )}
+            {event.body ? (
+              <div className="mt-4">
+                <EventBody value={event.body} />
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-white/70">Details coming soon.</p>
+            )}
+          </section>
 
-          {galleryItems.length > 0 ? (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-white">Gallery</h3>
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <h3 className="text-lg font-semibold text-white">Gallery</h3>
+
+            {galleryItems.length > 0 ? (
               <div className="mt-3 min-w-0">
                 <EventGalleryCarousel items={galleryItems} />
               </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
-              No gallery photos yet.
-            </div>
-          )}
-        </section>
+            ) : (
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                No gallery photos yet.
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
       {summary

@@ -29,6 +29,11 @@ type SanityEvent = {
   heroImage?: SanityImageSource;
 };
 
+type Badge = {
+  label: string;
+  className: string;
+};
+
 const EVENT_TZ = process.env.NEXT_PUBLIC_EVENT_TIMEZONE || 'America/Edmonton';
 
 function formatEventDateTime(iso?: string | null) {
@@ -72,55 +77,68 @@ function getEventHref(venueKey: string | undefined, slug: string) {
   return slug ? `${base}/${slug}` : base;
 }
 
+function getFallbackImage(venueKey?: string) {
+  return venueKey === 'prohibition'
+    ? '/images/og/prohibition-og.webp'
+    : '/images/og/jungle-bird-og.webp';
+}
+
 function computeBadges(opts: {
   status?: string;
   remainingCount: number | null;
-  startsAt?: string;
-  ticketsOnSaleAt?: string | null;
+  capacity?: number;
   salesEnded: boolean;
   isEnded: boolean;
 }) {
-  const badges: string[] = [];
+  const badges: Badge[] = [];
   const status = (opts.status || '').toLowerCase();
 
-  if (opts.isEnded || status === 'ended') badges.push('Ended');
-  if (status === 'cancelled' || status === 'canceled') badges.push('Cancelled');
-
-  if (status === 'on_sale' && opts.salesEnded && !opts.isEnded) {
-    badges.push('Sales ended');
+  if (status === 'cancelled' || status === 'canceled') {
+    badges.push({
+      label: 'Cancelled',
+      className: 'border-red-400/30 bg-red-500/15 text-red-200',
+    });
+    return badges;
   }
 
-  if (
-    status === 'on_sale' &&
-    !opts.salesEnded &&
-    opts.remainingCount !== null
-  ) {
-    if (opts.remainingCount <= 0) badges.push('Sold Out');
+  if (opts.isEnded || status === 'ended') {
+    badges.push({
+      label: 'Ended',
+      className: 'border-white/15 bg-white/10 text-white/80',
+    });
+    return badges;
   }
 
-  if (
-    status === 'on_sale' &&
-    !opts.salesEnded &&
-    !opts.isEnded &&
-    opts.startsAt
-  ) {
-    const startMs = Date.parse(opts.startsAt);
-    if (Number.isFinite(startMs)) {
-      const diffHours = (startMs - Date.now()) / (1000 * 60 * 60);
-      if (diffHours >= 0 && diffHours <= 72) badges.unshift('Happening soon');
+  if (status === 'on_sale' && opts.salesEnded) {
+    badges.push({
+      label: 'Sales ended',
+      className: 'border-white/15 bg-white/10 text-white/80',
+    });
+    return badges;
+  }
+
+  if (status === 'on_sale' && opts.remainingCount !== null) {
+    if (opts.remainingCount <= 0) {
+      badges.push({
+        label: 'Sold Out',
+        className: 'border-red-400/30 bg-red-500/15 text-red-200',
+      });
+      return badges;
     }
-  }
 
-  if (
-    status === 'on_sale' &&
-    !opts.salesEnded &&
-    !opts.isEnded &&
-    opts.ticketsOnSaleAt
-  ) {
-    const onSaleMs = Date.parse(opts.ticketsOnSaleAt);
-    if (Number.isFinite(onSaleMs)) {
-      const diffHours = (Date.now() - onSaleMs) / (1000 * 60 * 60);
-      if (diffHours >= 0 && diffHours <= 72) badges.unshift('New');
+    const capacity = opts.capacity ?? 0;
+    const ratio = capacity > 0 ? opts.remainingCount / capacity : null;
+
+    if (ratio !== null && ratio <= 0.15) {
+      badges.push({
+        label: 'Almost Sold Out',
+        className: 'border-amber-400/30 bg-amber-500/15 text-amber-200',
+      });
+    } else {
+      badges.push({
+        label: 'Upcoming',
+        className: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
+      });
     }
   }
 
@@ -150,16 +168,16 @@ export default function EventCard({
 
   const imageSrc = event.heroImage
     ? urlFor(event.heroImage).width(1600).height(700).fit('crop').url()
-    : null;
+    : getFallbackImage(event.venueKey);
 
   const price = safeNumber(firstTT?.priceCents, 0) / 100;
   const currency = firstTT?.currency || 'cad';
+  const capacity = safeNumber(firstTT?.capacity, 0);
 
   const badges = computeBadges({
     status: event.status,
     remainingCount,
-    startsAt: event.startsAt,
-    ticketsOnSaleAt: firstTT?.ticketsOnSaleAt ?? null,
+    capacity,
     salesEnded: state.salesEnded,
     isEnded: state.isEnded,
   });
@@ -186,29 +204,27 @@ export default function EventCard({
         !slug ? 'pointer-events-none opacity-60' : ''
       }`}
     >
-      {imageSrc ? (
-        <div className="relative">
-          <img
-            src={imageSrc}
-            alt={title}
-            className="h-44 w-full object-cover sepia md:h-52"
-            loading="lazy"
-          />
+      <div className="relative">
+        <img
+          src={imageSrc}
+          alt={title}
+          className="h-44 w-full object-cover sepia md:h-52"
+          loading="lazy"
+        />
 
-          {badges.length ? (
-            <div className="absolute top-3 right-3 flex gap-2">
-              {badges.map((b) => (
-                <span
-                  key={b}
-                  className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-xs font-semibold text-white"
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+        {badges.length ? (
+          <div className="absolute top-3 right-3 flex flex-wrap gap-2">
+            {badges.map((b) => (
+              <span
+                key={b.label}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${b.className}`}
+              >
+                {b.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="p-6">
         <h3 className="text-2xl text-white">{title.toUpperCase()}</h3>

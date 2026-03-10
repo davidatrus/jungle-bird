@@ -9,7 +9,6 @@ export default defineType({
       name: 'venueKey',
       title: 'Venue',
       type: 'string',
-      initialValue: 'jungle_bird',
       options: {
         list: [
           {title: 'Jungle Bird', value: 'jungle_bird'},
