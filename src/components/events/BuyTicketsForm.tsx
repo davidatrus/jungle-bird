@@ -15,6 +15,27 @@ type Props = {
   ticketSaleEndsAt?: string | null;
 };
 
+const COMMON_EMAIL_DOMAINS = [
+  'gmail.com',
+  'outlook.com',
+  'hotmail.com',
+  'yahoo.com',
+  'icloud.com',
+];
+
+const COMMON_TYPO_MAP: Record<string, string> = {
+  'gmal.com': 'gmail.com',
+  'gmail.con': 'gmail.com',
+  'gnail.com': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'hotnail.com': 'hotmail.com',
+  'hotmai.com': 'hotmail.com',
+  'outlok.com': 'outlook.com',
+  'outloo.com': 'outlook.com',
+  'yaho.com': 'yahoo.com',
+  'iclod.com': 'icloud.com',
+};
+
 function formatMoney(cents: number, currency: string) {
   const dollars = cents / 100;
 
@@ -30,7 +51,6 @@ function formatSaleEnds(iso?: string | null) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
 
-  // Force consistent formatting (still do after-mount to avoid hydration mismatch)
   const date = new Intl.DateTimeFormat('en-CA', {
     weekday: 'short',
     month: 'short',
@@ -44,6 +64,32 @@ function formatSaleEnds(iso?: string | null) {
   }).format(d);
 
   return `${date} at ${time}`;
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getEmailSuggestion(email: string) {
+  const normalized = normalizeEmail(email);
+  if (!isValidEmail(normalized)) return null;
+
+  const [, domain = ''] = normalized.split('@');
+  if (!domain) return null;
+
+  if (COMMON_TYPO_MAP[domain]) {
+    return normalized.replace(domain, COMMON_TYPO_MAP[domain]);
+  }
+
+  if (COMMON_EMAIL_DOMAINS.includes(domain)) {
+    return null;
+  }
+
+  return null;
 }
 
 export default function BuyTicketsForm({
@@ -70,6 +116,7 @@ export default function BuyTicketsForm({
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -82,15 +129,15 @@ export default function BuyTicketsForm({
 
   const disabled = salesEnded || remaining <= 0 || maxSelectable <= 0;
   const total = unitAmountCents * qty;
-
   const safeTicketTypeName = (ticketTypeName || 'General Admission').trim();
 
-  // ✅ Avoid hydration mismatch: compute on client after mount
   const [saleEndsLabel, setSaleEndsLabel] = useState<string | null>(null);
 
   useEffect(() => {
     setSaleEndsLabel(formatSaleEnds(ticketSaleEndsAt));
   }, [ticketSaleEndsAt]);
+
+  const suggestedEmail = useMemo(() => getEmailSuggestion(email), [email]);
 
   async function handleCheckout() {
     setErr(null);
@@ -110,14 +157,35 @@ export default function BuyTicketsForm({
       setErr('Please enter your first and last name.');
       return;
     }
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedConfirmEmail = normalizeEmail(confirmEmail);
+
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
       setErr('Please enter a valid email.');
       return;
     }
+
+    if (!normalizedConfirmEmail) {
+      setErr('Please confirm your email.');
+      return;
+    }
+
+    if (normalizedEmail !== normalizedConfirmEmail) {
+      setErr('Email and confirm email must match.');
+      return;
+    }
+
+    if (suggestedEmail && normalizedEmail !== suggestedEmail) {
+      setErr(`Did you mean ${suggestedEmail}?`);
+      return;
+    }
+
     if (qty < minPerOrder) {
       setErr(`Minimum purchase is ${minPerOrder} tickets.`);
       return;
     }
+
     if (qty > maxSelectable) {
       setErr(`Only ${maxSelectable} tickets available for this purchase.`);
       return;
@@ -134,7 +202,7 @@ export default function BuyTicketsForm({
           quantity: qty,
           buyerFirstName: first.trim(),
           buyerLastName: last.trim(),
-          buyerEmail: email.trim().toLowerCase(),
+          buyerEmail: normalizedEmail,
           ticketTypeName: safeTicketTypeName,
           eventTitle,
         }),
@@ -158,6 +226,7 @@ export default function BuyTicketsForm({
       setLoading(false);
     }
   }
+
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-6 lg:p-7">
       <h2 className="text-xl font-semibold text-white lg:text-2xl">Tickets</h2>
@@ -193,6 +262,7 @@ export default function BuyTicketsForm({
           <span className="text-white/80">{saleEndsLabel}</span>
         </p>
       ) : null}
+
       <div className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4">
         <input
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4"
@@ -210,7 +280,7 @@ export default function BuyTicketsForm({
         />
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 space-y-3">
         <input
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4"
           placeholder="Email"
@@ -218,6 +288,32 @@ export default function BuyTicketsForm({
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading || disabled}
         />
+
+        <input
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4"
+          placeholder="Confirm email"
+          value={confirmEmail}
+          onChange={(e) => setConfirmEmail(e.target.value)}
+          disabled={loading || disabled}
+        />
+
+        {suggestedEmail ? (
+          <p className="text-xs text-amber-300">
+            Did you mean{' '}
+            <button
+              type="button"
+              className="underline underline-offset-4"
+              onClick={() => {
+                setEmail(suggestedEmail);
+                setConfirmEmail(suggestedEmail);
+                setErr(null);
+              }}
+            >
+              {suggestedEmail}
+            </button>
+            ?
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

@@ -104,7 +104,7 @@ function computeBadges(opts: {
   if (opts.isEnded || status === 'ended') {
     badges.push({
       label: 'Ended',
-      className: 'border-white/15 bg-white/10 text-white/80',
+      className: 'border-red-400/30 bg-red-500/15 text-red-200',
     });
     return badges;
   }

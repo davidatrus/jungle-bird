@@ -14,6 +14,29 @@ type ScanResult = null | {
   error?: string;
 };
 
+type ResendLookupResult = null | {
+  ok?: boolean;
+  error?: string;
+  order?: {
+    id: string;
+    status: string;
+    buyer_name: string;
+    buyer_email: string;
+    quantity: number;
+    unit_amount_cents: number;
+    currency: string;
+    email_sent_at: string | null;
+    last_ticket_resent_at: string | null;
+    ticket_email_send_count: number;
+    stripe_checkout_session_id: string | null;
+    event_title: string;
+    starts_at: string | null;
+    ends_at: string | null;
+    venue_key: string | null;
+  };
+  resent?: boolean;
+};
+
 function statusMeta(r: ScanResult) {
   if (!r) return { label: '', bg: '#e5e7eb', fg: '#111827' };
 
@@ -35,10 +58,12 @@ function statusMeta(r: ScanResult) {
   if (r.result === 'scan_error') {
     return { label: 'ERROR', bg: '#fee2e2', fg: '#991b1b' };
   }
-  if (r.result === 'voided')
+  if (r.result === 'voided') {
     return { label: 'VOIDED', bg: '#fee2e2', fg: '#991b1b' };
-  if (r.result === 'event_cancelled')
+  }
+  if (r.result === 'event_cancelled') {
     return { label: 'EVENT CANCELLED', bg: '#fee2e2', fg: '#991b1b' };
+  }
 
   return { label: r.ok ? 'OK' : 'ERROR', bg: '#e5e7eb', fg: '#111827' };
 }
@@ -47,6 +72,14 @@ function formatVenueLabel(venueKey?: string | null) {
   if (venueKey === 'prohibition') return 'Prohibition';
   if (venueKey === 'jungle_bird') return 'Jungle Bird';
   return venueKey || '';
+}
+
+function formatMoney(cents: number, currency: string) {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: (currency || 'cad').toUpperCase(),
+    currencyDisplay: 'narrowSymbol',
+  }).format((cents || 0) / 100);
 }
 
 const LS_KEY = 'jb_admin_scan_token';
@@ -59,6 +92,14 @@ export default function AdminScanPage() {
 
   const [cameraOn, setCameraOn] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(true);
+
+  const [lookupOrderId, setLookupOrderId] = useState('');
+  const [lookupSessionId, setLookupSessionId] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupResult, setLookupResult] = useState<ResendLookupResult>(null);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   const codeRef = useRef<HTMLInputElement | null>(null);
   const videoWrapRef = useRef<HTMLDivElement | null>(null);
@@ -140,6 +181,80 @@ export default function AdminScanPage() {
     } catch {}
   }
 
+  async function handleLookup() {
+    setLookupLoading(true);
+    setLookupResult(null);
+    setResendMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/resend-tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'lookup',
+          orderId: lookupOrderId.trim() || undefined,
+          sessionId: lookupSessionId.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      setLookupResult(data);
+
+      if (data?.order?.buyer_email) {
+        setResendEmail(data.order.buyer_email);
+      } else {
+        setResendEmail('');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lookup failed';
+      setLookupResult({ error: message });
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (!lookupResult?.order?.id) return;
+
+    setResendLoading(true);
+    setResendMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/resend-tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'resend',
+          orderId: lookupResult.order.id,
+          buyerEmail: resendEmail.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setResendMessage(data?.error || 'Resend failed');
+        return;
+      }
+
+      setResendMessage(
+        `Tickets resent to ${data?.order?.buyer_email || resendEmail}`,
+      );
+      await handleLookup();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Resend failed';
+      setResendMessage(message);
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!cameraOn) return;
 
@@ -168,7 +283,7 @@ export default function AdminScanPage() {
         controls = await reader.decodeFromVideoDevice(
           preferred?.deviceId ?? undefined,
           video,
-          (res, err) => {
+          (res) => {
             if (stopped) return;
 
             if (res) {
@@ -198,8 +313,6 @@ export default function AdminScanPage() {
               if (autoSubmit && adminToken) {
                 setTimeout(() => onScan(), 0);
               }
-            } else if (err) {
-              // ignore live decode errors
             }
           },
         );
@@ -225,7 +338,7 @@ export default function AdminScanPage() {
   return (
     <div
       style={{
-        maxWidth: 560,
+        maxWidth: 720,
         margin: '48px auto',
         padding: 18,
         fontFamily: 'system-ui',
@@ -489,6 +602,173 @@ export default function AdminScanPage() {
                 {JSON.stringify(result, null, 2)}
               </pre>
             </details>
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          marginTop: 20,
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          borderRadius: 18,
+          padding: 16,
+        }}
+      >
+        <h2 style={{ fontSize: 24, marginBottom: 12, letterSpacing: 1 }}>
+          RESEND TICKETS
+        </h2>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            value={lookupOrderId}
+            onChange={(e) => setLookupOrderId(e.target.value)}
+            placeholder="Order ID"
+            style={{
+              padding: 12,
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 12,
+              background: 'rgba(0,0,0,0.25)',
+              color: 'white',
+            }}
+          />
+
+          <input
+            value={lookupSessionId}
+            onChange={(e) => setLookupSessionId(e.target.value)}
+            placeholder="Session ID (optional)"
+            style={{
+              padding: 12,
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 12,
+              background: 'rgba(0,0,0,0.25)',
+              color: 'white',
+            }}
+          />
+
+          <div style={{ fontSize: 12, opacity: 0.75 }}>
+            Use order ID as the main workflow. Session ID can help if the guest
+            only has the success-page reference.
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLookup}
+            disabled={lookupLoading}
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              border: 'none',
+              background: '#111827',
+              color: 'white',
+              fontWeight: 800,
+              cursor: lookupLoading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {lookupLoading ? 'Looking up...' : 'Lookup order'}
+          </button>
+        </div>
+
+        {lookupResult?.error && (
+          <div style={{ marginTop: 12, color: '#fecaca', fontSize: 14 }}>
+            {lookupResult.error}
+          </div>
+        )}
+
+        {lookupResult?.order && (
+          <div
+            style={{
+              marginTop: 16,
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(0,0,0,0.25)',
+              padding: 14,
+            }}
+          >
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>
+              {lookupResult.order.event_title}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Venue: {formatVenueLabel(lookupResult.order.venue_key)}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Order ID: {lookupResult.order.id}
+            </div>
+
+            {lookupResult.order.stripe_checkout_session_id && (
+              <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+                Session ID: {lookupResult.order.stripe_checkout_session_id}
+              </div>
+            )}
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Buyer: {lookupResult.order.buyer_name}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Status: {lookupResult.order.status}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Qty: {lookupResult.order.quantity} · Price:{' '}
+              {formatMoney(
+                lookupResult.order.unit_amount_cents,
+                lookupResult.order.currency,
+              )}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              First sent:{' '}
+              {lookupResult.order.email_sent_at || 'Never / unknown'}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
+              Last resent: {lookupResult.order.last_ticket_resent_at || 'Never'}
+            </div>
+
+            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 10 }}>
+              Send count: {lookupResult.order.ticket_email_send_count ?? 0}
+            </div>
+
+            <input
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              placeholder="Buyer email"
+              style={{
+                width: '100%',
+                padding: 12,
+                border: '1px solid rgba(255,255,255,0.18)',
+                borderRadius: 12,
+                background: 'rgba(0,0,0,0.25)',
+                color: 'white',
+                marginBottom: 12,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading}
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                border: 'none',
+                background: '#065f46',
+                color: 'white',
+                fontWeight: 800,
+                cursor: resendLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {resendLoading ? 'Resending...' : 'Resend tickets'}
+            </button>
+
+            {resendMessage && (
+              <div style={{ marginTop: 12, fontSize: 14, color: '#bbf7d0' }}>
+                {resendMessage}
+              </div>
+            )}
           </div>
         )}
       </div>

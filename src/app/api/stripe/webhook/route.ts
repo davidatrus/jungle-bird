@@ -88,6 +88,126 @@ async function applyRefundByPaymentIntent(input: {
   }
 }
 
+async function sendTicketsEmailOnce(input: {
+  orderId: string;
+  eventId: string;
+  metadataVenueKey: VenueKey;
+  buyerFirstName: string;
+  buyerLastName: string;
+  buyerEmail: string;
+  effectiveQty: number;
+  unitAmountCents: number;
+}) {
+  const client = await pool.connect();
+  const advisoryKey = `ticket-email:${input.orderId}`;
+
+  try {
+    // Session-level advisory lock.
+    // This ensures only one webhook request can send the email for this order at a time.
+    await client.query(`select pg_advisory_lock(hashtext($1))`, [advisoryKey]);
+
+    const orderRes = await client.query(
+      `
+      select id, email_sent_at
+      from public.orders
+      where id = $1
+      limit 1
+      for update
+      `,
+      [input.orderId],
+    );
+
+    const order = orderRes.rows[0] as
+      | { id: string; email_sent_at: string | null }
+      | undefined;
+
+    if (!order) {
+      throw new Error(`Order not found while sending email: ${input.orderId}`);
+    }
+
+    if (order.email_sent_at) {
+      return { sent: false as const, skipped: 'already_sent' as const };
+    }
+
+    const eventInfoRes = await client.query(
+      `
+      select title, starts_at, ends_at, venue_key
+      from public.events
+      where id = $1
+      limit 1
+      `,
+      [input.eventId],
+    );
+
+    const ticketsRes = await client.query(
+      `
+      select ticket_code
+      from public.tickets
+      where order_id = $1
+      order by created_at asc
+      `,
+      [input.orderId],
+    );
+
+    const eventInfo = eventInfoRes.rows[0] as
+      | {
+          title: string;
+          starts_at: string | null;
+          ends_at: string | null;
+          venue_key: string | null;
+        }
+      | undefined;
+
+    const resolvedVenueKey = normalizeVenueKey(
+      eventInfo?.venue_key ?? input.metadataVenueKey,
+    );
+    const branding = getVenueEmailBranding(resolvedVenueKey);
+
+    const tickets = ticketsRes.rows as { ticket_code: string }[];
+
+    const { html, attachments } = await buildTicketsEmailPayload({
+      venueKey: resolvedVenueKey,
+      title: eventInfo?.title ?? 'Event',
+      startsAt: eventInfo?.starts_at ?? null,
+      endsAt: eventInfo?.ends_at ?? null,
+      buyerName: `${input.buyerFirstName} ${input.buyerLastName}`,
+      quantity: input.effectiveQty,
+      unitPriceCents: input.unitAmountCents,
+      currency: 'cad',
+      tickets,
+    });
+
+    await resend.emails.send({
+      from: branding.from,
+      to: input.buyerEmail,
+      subject: `Your tickets for ${eventInfo?.title ?? branding.subjectFallback}`,
+      html,
+      attachments,
+    });
+
+    await client.query(
+      `
+  update public.orders
+  set
+    email_sent_at = coalesce(email_sent_at, now()),
+    ticket_email_send_count = coalesce(ticket_email_send_count, 0) + 1,
+    updated_at = now()
+  where id = $1
+  `,
+      [input.orderId],
+    );
+
+    return { sent: true as const };
+  } finally {
+    try {
+      await client.query(`select pg_advisory_unlock(hashtext($1))`, [
+        advisoryKey,
+      ]);
+    } catch {}
+    client.release();
+  }
+}
+
 export async function POST(req: Request) {
   const sig = req.headers.get('stripe-signature');
   if (!sig) {
@@ -283,6 +403,8 @@ export async function POST(req: Request) {
             holdStatus !== 'active' ||
             (holdExpiresAt ? holdExpiresAt.getTime() <= Date.now() : true);
 
+          // This only prevents duplicate work inside the transaction.
+          // Race-safe email prevention happens later inside sendTicketsEmailOnce().
           if (existingOrder?.email_sent_at) {
             if (holdId && holdStatus === 'active') {
               await client.query(
@@ -502,7 +624,6 @@ export async function POST(req: Request) {
           );
 
           const orderId = orderRes.rows[0].id as string;
-          const emailSentAt = orderRes.rows[0].email_sent_at as string | null;
 
           const ticketCountRes = await client.query(
             `select count(*)::int as c from public.tickets where order_id = $1`,
@@ -549,69 +670,22 @@ export async function POST(req: Request) {
 
           await client.query('commit');
 
-          if (emailSentAt) {
-            return NextResponse.json({ received: true });
-          }
-
-          const eventInfoRes = await pool.query(
-            `
-            select title, starts_at, ends_at, venue_key
-            from public.events
-            where id = $1
-            limit 1
-            `,
-            [event_id],
-          );
-
-          const ticketsRes = await pool.query(
-            `select ticket_code from public.tickets where order_id = $1 order by created_at asc`,
-            [orderId],
-          );
-
-          const eventInfo = eventInfoRes.rows[0] as
-            | {
-                title: string;
-                starts_at: string | null;
-                ends_at: string | null;
-                venue_key: string | null;
-              }
-            | undefined;
-
-          const resolvedVenueKey = normalizeVenueKey(
-            eventInfo?.venue_key ?? metadataVenueKey,
-          );
-          const branding = getVenueEmailBranding(resolvedVenueKey);
-
-          const tickets = ticketsRes.rows as { ticket_code: string }[];
-
-          const { html, attachments } = await buildTicketsEmailPayload({
-            venueKey: resolvedVenueKey,
-            title: eventInfo?.title ?? 'Event',
-            startsAt: eventInfo?.starts_at ?? null,
-            endsAt: eventInfo?.ends_at ?? null,
-            buyerName: `${buyer_first_name} ${buyer_last_name}`,
-            quantity: effectiveQty,
-            unitPriceCents: num(unit_amount_cents, 0),
-            currency: 'cad',
-            tickets,
+          // Race-safe, idempotent email send.
+          const emailResult = await sendTicketsEmailOnce({
+            orderId,
+            eventId: String(event_id),
+            metadataVenueKey,
+            buyerFirstName: String(buyer_first_name),
+            buyerLastName: String(buyer_last_name),
+            buyerEmail: String(buyer_email),
+            effectiveQty,
+            unitAmountCents: num(unit_amount_cents, 0),
           });
-
-          await resend.emails.send({
-            from: branding.from,
-            to: buyer_email,
-            subject: `Your tickets for ${eventInfo?.title ?? branding.subjectFallback}`,
-            html,
-            attachments,
-          });
-
-          await pool.query(
-            `update public.orders set email_sent_at = now() where id = $1`,
-            [orderId],
-          );
 
           return NextResponse.json({
             received: true,
             late_payment: isLatePayment,
+            email: emailResult,
           });
         } catch (err) {
           try {

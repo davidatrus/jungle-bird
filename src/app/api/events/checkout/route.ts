@@ -10,15 +10,32 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 type CheckoutBody = {
   sanityEventId: string;
-  sanityTicketTypeId: string; // Sanity ticketTypes[] _key
+  sanityTicketTypeId: string;
   quantity: number;
   buyerFirstName: string;
   buyerLastName: string;
   buyerEmail: string;
 };
 
+const BLOCKED_EMAIL_DOMAINS = new Set([
+  'gmal.com',
+  'gmail.con',
+  'gnail.com',
+  'gmai.com',
+  'hotnail.com',
+  'hotmai.com',
+  'outlok.com',
+  'outloo.com',
+  'yaho.com',
+  'iclod.com',
+]);
+
 function isEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function getVenueBasePath(venueKey: string | null | undefined) {
@@ -45,7 +62,7 @@ export async function POST(req: Request) {
     const quantity = Number(body.quantity ?? 0);
     const buyerFirstName = (body.buyerFirstName ?? '').trim();
     const buyerLastName = (body.buyerLastName ?? '').trim();
-    const buyerEmail = (body.buyerEmail ?? '').trim().toLowerCase();
+    const buyerEmail = normalizeEmail(body.buyerEmail ?? '');
 
     if (!sanityEventId) {
       return NextResponse.json(
@@ -72,6 +89,14 @@ export async function POST(req: Request) {
     if (!buyerEmail || !isEmail(buyerEmail)) {
       return NextResponse.json(
         { error: 'Valid email is required.' },
+        { status: 400 },
+      );
+    }
+
+    const emailDomain = buyerEmail.split('@')[1] || '';
+    if (BLOCKED_EMAIL_DOMAINS.has(emailDomain)) {
+      return NextResponse.json(
+        { error: 'Please double-check your email domain for a typo.' },
         { status: 400 },
       );
     }
