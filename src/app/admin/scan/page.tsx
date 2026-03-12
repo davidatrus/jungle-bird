@@ -33,8 +33,11 @@ type ResendLookupResult = null | {
     starts_at: string | null;
     ends_at: string | null;
     venue_key: string | null;
+    event_id?: string;
+    ticket_type_id?: string;
   };
   resent?: boolean;
+  reissued?: boolean;
 };
 
 function statusMeta(r: ScanResult) {
@@ -100,6 +103,12 @@ export default function AdminScanPage() {
   const [resendEmail, setResendEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  const [reissueLoading, setReissueLoading] = useState(false);
+  const [reissueMessage, setReissueMessage] = useState<string | null>(null);
+  const [reissueReason, setReissueReason] = useState(
+    'Wrong email / ticket reissue',
+  );
 
   const codeRef = useRef<HTMLInputElement | null>(null);
   const videoWrapRef = useRef<HTMLDivElement | null>(null);
@@ -185,6 +194,7 @@ export default function AdminScanPage() {
     setLookupLoading(true);
     setLookupResult(null);
     setResendMessage(null);
+    setReissueMessage(null);
 
     try {
       const res = await fetch('/api/admin/resend-tickets', {
@@ -252,6 +262,47 @@ export default function AdminScanPage() {
       setResendMessage(message);
     } finally {
       setResendLoading(false);
+    }
+  }
+
+  async function handleReissue() {
+    if (!lookupResult?.order?.id) return;
+
+    setReissueLoading(true);
+    setReissueMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/reissue-tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'reissue',
+          orderId: lookupResult.order.id,
+          buyerEmail: resendEmail.trim(),
+          reason: reissueReason.trim() || 'Admin ticket reissue',
+          adminLabel: 'admin-scan-page',
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setReissueMessage(data?.error || 'Reissue failed');
+        return;
+      }
+
+      setReissueMessage(
+        `Tickets reissued and sent to ${data?.order?.buyer_email || resendEmail}`,
+      );
+      await handleLookup();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Reissue failed';
+      setReissueMessage(message);
+    } finally {
+      setReissueLoading(false);
     }
   }
 
@@ -338,7 +389,7 @@ export default function AdminScanPage() {
   return (
     <div
       style={{
-        maxWidth: 720,
+        maxWidth: 760,
         margin: '48px auto',
         padding: 18,
         fontFamily: 'system-ui',
@@ -362,6 +413,7 @@ export default function AdminScanPage() {
           border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 18,
           padding: 16,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
         }}
       >
         <form onSubmit={onScan} style={{ display: 'grid', gap: 12 }}>
@@ -612,11 +664,18 @@ export default function AdminScanPage() {
           background: 'rgba(255,255,255,0.06)',
           border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 18,
-          padding: 16,
+          padding: 18,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
         }}
       >
-        <h2 style={{ fontSize: 24, marginBottom: 12, letterSpacing: 1 }}>
-          RESEND TICKETS
+        <h2
+          style={{
+            fontSize: 24,
+            marginBottom: 14,
+            letterSpacing: 1,
+          }}
+        >
+          ORDER EMAIL & TICKET TOOLS
         </h2>
 
         <div style={{ display: 'grid', gap: 12 }}>
@@ -646,7 +705,7 @@ export default function AdminScanPage() {
             }}
           />
 
-          <div style={{ fontSize: 12, opacity: 0.75 }}>
+          <div style={{ fontSize: 12, opacity: 0.75, lineHeight: 1.45 }}>
             Use order ID as the main workflow. Session ID can help if the guest
             only has the success-page reference.
           </div>
@@ -678,97 +737,201 @@ export default function AdminScanPage() {
         {lookupResult?.order && (
           <div
             style={{
-              marginTop: 16,
+              marginTop: 18,
               borderRadius: 14,
               border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(0,0,0,0.25)',
-              padding: 14,
+              padding: 16,
             }}
           >
-            <div style={{ fontWeight: 800, marginBottom: 8 }}>
+            <div
+              style={{
+                fontWeight: 800,
+                fontSize: 20,
+                marginBottom: 10,
+              }}
+            >
               {lookupResult.order.event_title}
             </div>
 
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Venue: {formatVenueLabel(lookupResult.order.venue_key)}
-            </div>
-
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Order ID: {lookupResult.order.id}
-            </div>
-
-            {lookupResult.order.stripe_checkout_session_id && (
-              <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-                Session ID: {lookupResult.order.stripe_checkout_session_id}
+            <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Venue: {formatVenueLabel(lookupResult.order.venue_key)}
               </div>
-            )}
 
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Buyer: {lookupResult.order.buyer_name}
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Order ID: {lookupResult.order.id}
+              </div>
+
+              {lookupResult.order.stripe_checkout_session_id && (
+                <div style={{ fontSize: 14, opacity: 0.92, lineHeight: 1.45 }}>
+                  Session ID: {lookupResult.order.stripe_checkout_session_id}
+                </div>
+              )}
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Buyer: {lookupResult.order.buyer_name}
+              </div>
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Status: {lookupResult.order.status}
+              </div>
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Qty: {lookupResult.order.quantity} · Price:{' '}
+                {formatMoney(
+                  lookupResult.order.unit_amount_cents,
+                  lookupResult.order.currency,
+                )}
+              </div>
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                First sent:{' '}
+                {lookupResult.order.email_sent_at || 'Never / unknown'}
+              </div>
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Last resent:{' '}
+                {lookupResult.order.last_ticket_resent_at || 'Never'}
+              </div>
+
+              <div style={{ fontSize: 14, opacity: 0.92 }}>
+                Send count: {lookupResult.order.ticket_email_send_count ?? 0}
+              </div>
             </div>
 
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Status: {lookupResult.order.status}
-            </div>
+            <div
+              style={{
+                marginTop: 8,
+                paddingTop: 14,
+                borderTop: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  marginBottom: 8,
+                }}
+              >
+                Resend to email
+              </div>
 
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Qty: {lookupResult.order.quantity} · Price:{' '}
-              {formatMoney(
-                lookupResult.order.unit_amount_cents,
-                lookupResult.order.currency,
+              <input
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                placeholder="Buyer email"
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  borderRadius: 12,
+                  background: 'rgba(0,0,0,0.25)',
+                  color: 'white',
+                  marginBottom: 12,
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  border: 'none',
+                  background: '#065f46',
+                  color: 'white',
+                  fontWeight: 800,
+                  cursor: resendLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {resendLoading ? 'Resending...' : 'Resend tickets'}
+              </button>
+
+              {resendMessage && (
+                <div style={{ marginTop: 12, fontSize: 14, color: '#bbf7d0' }}>
+                  {resendMessage}
+                </div>
               )}
             </div>
 
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              First sent:{' '}
-              {lookupResult.order.email_sent_at || 'Never / unknown'}
-            </div>
-
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 6 }}>
-              Last resent: {lookupResult.order.last_ticket_resent_at || 'Never'}
-            </div>
-
-            <div style={{ fontSize: 14, opacity: 0.92, marginBottom: 10 }}>
-              Send count: {lookupResult.order.ticket_email_send_count ?? 0}
-            </div>
-
-            <input
-              value={resendEmail}
-              onChange={(e) => setResendEmail(e.target.value)}
-              placeholder="Buyer email"
+            <div
               style={{
-                width: '100%',
-                padding: 12,
-                border: '1px solid rgba(255,255,255,0.18)',
-                borderRadius: 12,
-                background: 'rgba(0,0,0,0.25)',
-                color: 'white',
-                marginBottom: 12,
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resendLoading}
-              style={{
-                padding: 14,
-                borderRadius: 12,
-                border: 'none',
-                background: '#065f46',
-                color: 'white',
-                fontWeight: 800,
-                cursor: resendLoading ? 'not-allowed' : 'pointer',
+                marginTop: 18,
+                paddingTop: 18,
+                borderTop: '1px solid rgba(255,255,255,0.10)',
               }}
             >
-              {resendLoading ? 'Resending...' : 'Resend tickets'}
-            </button>
-
-            {resendMessage && (
-              <div style={{ marginTop: 12, fontSize: 14, color: '#bbf7d0' }}>
-                {resendMessage}
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  marginBottom: 8,
+                }}
+              >
+                Reissue tickets
               </div>
-            )}
+
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.82,
+                  marginBottom: 10,
+                  lineHeight: 1.45,
+                }}
+              >
+                Reissuing voids the current active ticket codes on this order
+                and creates brand new ones. Use this if tickets were sent to the
+                wrong email and you want to invalidate the old QR codes.
+              </div>
+
+              <input
+                value={reissueReason}
+                onChange={(e) => setReissueReason(e.target.value)}
+                placeholder="Reason for reissue"
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  borderRadius: 12,
+                  background: 'rgba(0,0,0,0.25)',
+                  color: 'white',
+                  marginBottom: 12,
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={handleReissue}
+                disabled={reissueLoading}
+                style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  border: 'none',
+                  background: '#991b1b',
+                  color: 'white',
+                  fontWeight: 800,
+                  cursor: reissueLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {reissueLoading ? 'Reissuing...' : 'Reissue tickets'}
+              </button>
+
+              {reissueMessage && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontSize: 14,
+                    color: reissueMessage.toLowerCase().includes('failed')
+                      ? '#fecaca'
+                      : '#fde68a',
+                  }}
+                >
+                  {reissueMessage}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
