@@ -17,9 +17,8 @@ type BuildEmailArgs = {
 
 type ResendAttachment = {
   filename: string;
-  content: string; // base64
+  content: string;
   content_type: string;
-  content_id: string; // CID
 };
 
 function formatMoney(cents: number, currency: string) {
@@ -37,27 +36,13 @@ function formatDateRange(
   return e ? `${s} to ${e}` : s;
 }
 
-function getBaseUrl() {
-  const base =
-    process.env.SITE_URL ||
-    process.env.TICKETS_BASE_URL ||
-    'http://localhost:3000';
-
-  return base.replace(/\/$/, '');
+function getVenueSiteUrl(venueKey: VenueKey) {
+  const config = getVenueConfig(venueKey);
+  return config.siteUrl.replace(/\/$/, '');
 }
 
 function getBrandCopy(venueKey: VenueKey) {
   const config = getVenueConfig(venueKey);
-
-  if (venueKey === 'prohibition') {
-    return {
-      emailHeading: `Your ${config.brandName} tickets`,
-      confirmationLine: 'your payment is confirmed. Your tickets are below.',
-      doorLine: 'Present this QR code at the door for entry.',
-      helperLine:
-        'Keep this email handy. If scanning fails, staff can manually enter the ticket code.',
-    };
-  }
 
   return {
     emailHeading: `Your ${config.brandName} tickets`,
@@ -84,7 +69,7 @@ export async function buildTicketsEmailPayload(
   } = args;
 
   const subtotalCents = unitPriceCents * quantity;
-  const baseUrl = getBaseUrl();
+  const baseUrl = getVenueSiteUrl(venueKey);
   const config = getVenueConfig(venueKey);
   const brand = getBrandCopy(venueKey);
   const eventBasePath = `${config.basePath}/events`;
@@ -94,11 +79,11 @@ export async function buildTicketsEmailPayload(
 
   for (let i = 0; i < tickets.length; i++) {
     const code = tickets[i].ticket_code;
-    const cid = `ticket-${i + 1}`;
 
-    const qrValue = `${baseUrl}/admin/scan?code=${code}`;
+    const scanUrl = `${baseUrl}/admin/scan?code=${code}`;
+    const qrImageUrl = `${baseUrl}/api/tickets/qr/${code}`;
 
-    const pngBuffer = await QRCode.toBuffer(qrValue, {
+    const pngBuffer = await QRCode.toBuffer(scanUrl, {
       type: 'png',
       width: 220,
       margin: 1,
@@ -109,21 +94,19 @@ export async function buildTicketsEmailPayload(
       filename: `ticket-${code}.png`,
       content: pngBuffer.toString('base64'),
       content_type: 'image/png',
-      content_id: cid,
     });
-
-    const qrUrl = `${baseUrl}/api/tickets/qr/${code}`;
 
     ticketBlocks.push(`
       <div style="border:1px solid #eee;border-radius:12px;padding:16px;margin:16px 0;">
         <div style="font-size:14px;color:#555;margin-bottom:8px;">Ticket ${i + 1} of ${tickets.length}</div>
+
         <div style="font-size:18px;font-weight:700;margin:8px 0;">
           Code: <span style="letter-spacing:1px;">${code}</span>
         </div>
 
         <div style="margin-top:12px;">
           <img
-            src="cid:${cid}"
+            src="${qrImageUrl}"
             alt="Ticket QR Code"
             width="220"
             height="220"
@@ -137,7 +120,7 @@ export async function buildTicketsEmailPayload(
 
         <div style="margin-top:10px;color:#666;font-size:12px;">
           If the QR image doesn’t load, open it here:
-          <a href="${qrUrl}" style="color:#111;text-decoration:underline;">${qrUrl}</a>
+          <a href="${qrImageUrl}" style="color:#111;text-decoration:underline;">${qrImageUrl}</a>
         </div>
       </div>
     `);

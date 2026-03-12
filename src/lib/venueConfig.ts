@@ -4,6 +4,7 @@ type VenueConfig = {
   brandName: string;
   shortName: string;
   basePath: string;
+  siteUrl: string;
 
   logo: {
     src: string;
@@ -49,6 +50,7 @@ const venueConfigs: Record<VenueKey, VenueConfig> = {
     brandName: 'Jungle Bird',
     shortName: 'Jungle Bird',
     basePath: '',
+    siteUrl: 'https://www.junglebirdtikiyyc.com',
     logo: {
       src: '/images/logo/icon.png',
       alt: 'Jungle Bird logo',
@@ -91,6 +93,7 @@ const venueConfigs: Record<VenueKey, VenueConfig> = {
     brandName: 'Prohibition',
     shortName: 'Prohibition',
     basePath: '/prohibition',
+    siteUrl: 'https://www.junglebirdtikiyyc.com/prohibition',
     logo: {
       src: '/images/logo/Logo-copy.png',
       alt: 'Prohibition Lounge logo',
