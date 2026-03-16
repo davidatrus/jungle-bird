@@ -1,3 +1,4 @@
+//src/app/(public)/(prohibition)/prohibition/events/layout.tsx
 export default function ProhibitionEventsLayout({
   children,
 }: {
