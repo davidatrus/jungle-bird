@@ -1,3 +1,4 @@
+//src/sanity/client.ts
 import { createClient } from '@sanity/client';
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!;
