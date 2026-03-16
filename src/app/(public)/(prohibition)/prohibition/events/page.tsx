@@ -1,4 +1,4 @@
-// src/app/(public)/prohibition/events/page.tsx
+// src/app/(public)/prohibition/events/page.tsx l
 import Link from 'next/link';
 import { client } from '@/sanity/client';
 import { qEventsList } from '@/sanity/queries';
