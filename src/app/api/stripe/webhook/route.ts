@@ -7,10 +7,14 @@ import { Resend } from 'resend';
 import { buildTicketsEmailPayload } from '@/lib/ticketsEmail';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
 import type { VenueKey } from '@/lib/venueConfig';
+import {
+  getStripeClient,
+  getStripeWebhookSecrets,
+  normalizeVenueKey,
+} from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 function generateTicketCode() {
@@ -20,10 +24,6 @@ function generateTicketCode() {
 function num(v: unknown, fallback = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
-}
-
-function normalizeVenueKey(value: string | null | undefined): VenueKey {
-  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
 }
 
 function getVenueEmailBranding(venueKey: VenueKey) {
@@ -214,15 +214,36 @@ export async function POST(req: Request) {
     return new NextResponse('Missing Stripe signature', { status: 400 });
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    return new NextResponse('Webhook secret not configured', { status: 500 });
-  }
-
   let evt: Stripe.Event;
+  let matchedVenueKey: VenueKey | null = null;
+
   try {
     const body = await req.text();
-    evt = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    const webhookCandidates = getStripeWebhookSecrets();
+
+    let verifiedEvent: Stripe.Event | null = null;
+
+    for (const candidate of webhookCandidates) {
+      try {
+        const stripe = getStripeClient(candidate.venueKey);
+        verifiedEvent = stripe.webhooks.constructEvent(
+          body,
+          sig,
+          candidate.secret,
+        );
+        matchedVenueKey = candidate.venueKey;
+        break;
+      } catch {
+        // try next secret
+      }
+    }
+
+    if (!verifiedEvent || !matchedVenueKey) {
+      console.error('Webhook signature verification failed for all venues');
+      return new NextResponse('Invalid signature', { status: 400 });
+    }
+
+    evt = verifiedEvent;
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return new NextResponse('Invalid signature', { status: 400 });
@@ -470,7 +491,8 @@ export async function POST(req: Request) {
 
               if (paymentIntentId) {
                 try {
-                  await stripe.refunds.create({
+                  const refundStripe = getStripeClient(metadataVenueKey);
+                  await refundStripe.refunds.create({
                     payment_intent: paymentIntentId,
                     reason: 'requested_by_customer',
                     metadata: {

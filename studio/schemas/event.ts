@@ -161,7 +161,8 @@ export default defineType({
               title: 'Tickets On Sale At',
               type: 'datetime',
               description:
-                'Used for the "New" badge. Set to when tickets become available for purchase.',
+                'Required. Used for Upcoming vs Selling Fast timing and when tickets become available for purchase.',
+              validation: (Rule) => Rule.required().error('Tickets On Sale At is required.'),
             }),
 
             defineField({

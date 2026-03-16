@@ -1,12 +1,10 @@
 // src/app/api/events/checkout/route.ts
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { pool } from '@/lib/db';
 import type { VenueKey } from '@/lib/venueConfig';
+import { getStripeClient } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 type CheckoutBody = {
   sanityEventId: string;
@@ -17,25 +15,8 @@ type CheckoutBody = {
   buyerEmail: string;
 };
 
-const BLOCKED_EMAIL_DOMAINS = new Set([
-  'gmal.com',
-  'gmail.con',
-  'gnail.com',
-  'gmai.com',
-  'hotnail.com',
-  'hotmai.com',
-  'outlok.com',
-  'outloo.com',
-  'yaho.com',
-  'iclod.com',
-]);
-
 function isEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function normalizeEmail(value: string) {
-  return value.trim().toLowerCase();
 }
 
 function getVenueBasePath(venueKey: string | null | undefined) {
@@ -46,15 +27,6 @@ const HOLD_TTL_MINUTES = 15;
 
 export async function POST(req: Request) {
   try {
-    const publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    const secret = process.env.STRIPE_SECRET_KEY;
-    if (!publishable || !secret) {
-      return NextResponse.json(
-        { error: 'Stripe is not configured.' },
-        { status: 500 },
-      );
-    }
-
     const body = (await req.json()) as Partial<CheckoutBody>;
 
     const sanityEventId = (body.sanityEventId ?? '').trim();
@@ -62,7 +34,7 @@ export async function POST(req: Request) {
     const quantity = Number(body.quantity ?? 0);
     const buyerFirstName = (body.buyerFirstName ?? '').trim();
     const buyerLastName = (body.buyerLastName ?? '').trim();
-    const buyerEmail = normalizeEmail(body.buyerEmail ?? '');
+    const buyerEmail = (body.buyerEmail ?? '').trim().toLowerCase();
 
     if (!sanityEventId) {
       return NextResponse.json(
@@ -89,14 +61,6 @@ export async function POST(req: Request) {
     if (!buyerEmail || !isEmail(buyerEmail)) {
       return NextResponse.json(
         { error: 'Valid email is required.' },
-        { status: 400 },
-      );
-    }
-
-    const emailDomain = buyerEmail.split('@')[1] || '';
-    if (BLOCKED_EMAIL_DOMAINS.has(emailDomain)) {
-      return NextResponse.json(
-        { error: 'Please double-check your email domain for a typo.' },
         { status: 400 },
       );
     }
@@ -234,6 +198,8 @@ export async function POST(req: Request) {
 
       const venueKey: VenueKey =
         row.venue_key === 'prohibition' ? 'prohibition' : 'jungle_bird';
+
+      const stripe = getStripeClient(venueKey);
 
       const venueBasePath = getVenueBasePath(venueKey);
       const successUrl = `${origin}${venueBasePath}/events/success?session_id={CHECKOUT_SESSION_ID}`;

@@ -279,23 +279,11 @@ export default async function ProhibitionEventDetailPage({
         </div>
       </div>
 
-      {summary
-        ? (() => {
-            const salesEndIso = summary.salesEndAt ?? event.startsAt;
-            const salesEnded = salesEndIso
-              ? new Date(salesEndIso).getTime() <= Date.now()
-              : false;
-
-            return (
-              <div className="mt-6 text-sm text-white/60">
-                Price: {formatMoney(summary.unitAmountCents, summary.currency)}
-                {!salesEnded
-                  ? ` · Remaining: ${Math.max(0, summary.remaining)}`
-                  : ''}
-              </div>
-            );
-          })()
-        : null}
+      {summary ? (
+        <div className="mt-6 text-sm text-white/60">
+          Price: {formatMoney(summary.unitAmountCents, summary.currency)}
+        </div>
+      ) : null}
     </main>
   );
 }

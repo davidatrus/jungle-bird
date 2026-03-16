@@ -187,7 +187,7 @@ export default function BuyTicketsForm({
     }
 
     if (qty > maxSelectable) {
-      setErr(`Only ${maxSelectable} tickets available for this purchase.`);
+      setErr('Selected quantity is no longer available.');
       return;
     }
 
@@ -244,16 +244,6 @@ export default function BuyTicketsForm({
             {formatMoney(unitAmountCents, currency)}
           </span>
         </span>
-
-        {!salesEnded ? (
-          <>
-            <span className="text-white/60">·</span>
-            <span className="text-sm">
-              Remaining:{' '}
-              <span className="font-semibold">{Math.max(0, remaining)}</span>
-            </span>
-          </>
-        ) : null}
       </div>
 
       {saleEndsLabel ? (
@@ -263,7 +253,7 @@ export default function BuyTicketsForm({
         </p>
       ) : null}
 
-      <div className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4">
+      <div className="mt-4 space-y-3">
         <input
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4"
           placeholder="First name"
@@ -271,6 +261,7 @@ export default function BuyTicketsForm({
           onChange={(e) => setFirst(e.target.value)}
           disabled={loading || disabled}
         />
+
         <input
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-white placeholder:text-white/40 lg:py-4"
           placeholder="Last name"

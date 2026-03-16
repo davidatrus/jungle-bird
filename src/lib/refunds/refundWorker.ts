@@ -1,19 +1,14 @@
 import type { PoolClient } from 'pg';
-import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
 import type { VenueKey } from '@/lib/venueConfig';
+import { getStripeClient, normalizeVenueKey } from '@/lib/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 type WorkerOptions = {
-  maxItems?: number; // per run
+  maxItems?: number;
 };
-
-function normalizeVenueKey(value: string | null | undefined): VenueKey {
-  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
-}
 
 function getVenueEmailBranding(venueKey: VenueKey) {
   if (venueKey === 'prohibition') {
@@ -167,6 +162,10 @@ export async function processRefundQueue(
         continue;
       }
 
+      const venueKey = normalizeVenueKey(item.venue_key);
+      const branding = getVenueEmailBranding(venueKey);
+      const stripe = getStripeClient(venueKey);
+
       let paymentIntentId = item.stripe_payment_intent_id;
       if (!paymentIntentId) {
         const session = await stripe.checkout.sessions.retrieve(
@@ -175,9 +174,6 @@ export async function processRefundQueue(
         paymentIntentId = (session.payment_intent as string | null) ?? null;
       }
       if (!paymentIntentId) throw new Error('Missing payment_intent_id');
-
-      const venueKey = normalizeVenueKey(item.venue_key);
-      const branding = getVenueEmailBranding(venueKey);
 
       const refund = await stripe.refunds.create({
         payment_intent: paymentIntentId,
@@ -215,12 +211,11 @@ export async function processRefundQueue(
 
       refunded += 1;
 
-      const from = branding.from;
       const buyerName =
         `${item.buyer_first_name} ${item.buyer_last_name}`.trim();
 
       await resend.emails.send({
-        from,
+        from: branding.from,
         to: item.buyer_email,
         subject: `Event cancelled: ${item.event_title} (Refund started)`,
         html: `

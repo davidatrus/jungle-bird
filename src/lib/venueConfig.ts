@@ -99,7 +99,7 @@ const venueConfigs: Record<VenueKey, VenueConfig> = {
       alt: 'Prohibition Lounge logo',
     },
     hero: {
-      videoSrc: '/video/ProhibitionVideo.mp4',
+      videoSrc: '/video/PRO2.mp4',
       title: 'PROHIBITION',
       subtitle: 'COCKTAIL BAR & LOUNGE',
       menuHref: '/prohibition/menu',

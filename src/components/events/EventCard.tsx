@@ -89,6 +89,7 @@ function computeBadges(opts: {
   capacity?: number;
   salesEnded: boolean;
   isEnded: boolean;
+  liveSince?: string | null;
 }) {
   const badges: Badge[] = [];
   const status = (opts.status || '').toLowerCase();
@@ -104,21 +105,22 @@ function computeBadges(opts: {
   if (opts.isEnded || status === 'ended') {
     badges.push({
       label: 'Ended',
-      className: 'border-red-400/30 bg-red-500/15 text-red-200',
+      className:
+        'border-[var(--line)] bg-[rgba(196,154,99,0.10)] text-[rgba(245,230,210,0.82)]',
     });
     return badges;
   }
 
   if (status === 'on_sale' && opts.salesEnded) {
     badges.push({
-      label: 'Sales ended',
-      className: 'border-white/15 bg-white/10 text-white/80',
+      label: 'Sales Ended',
+      className: 'border-white/15 bg-white/10 text-white/75',
     });
     return badges;
   }
 
-  if (status === 'on_sale' && opts.remainingCount !== null) {
-    if (opts.remainingCount <= 0) {
+  if (status === 'on_sale') {
+    if (opts.remainingCount !== null && opts.remainingCount <= 0) {
       badges.push({
         label: 'Sold Out',
         className: 'border-red-400/30 bg-red-500/15 text-red-200',
@@ -127,19 +129,30 @@ function computeBadges(opts: {
     }
 
     const capacity = opts.capacity ?? 0;
-    const ratio = capacity > 0 ? opts.remainingCount / capacity : null;
+    const ratio =
+      opts.remainingCount !== null && capacity > 0
+        ? opts.remainingCount / capacity
+        : null;
 
-    if (ratio !== null && ratio <= 0.15) {
+    if (ratio !== null && ratio <= 0.25) {
       badges.push({
         label: 'Almost Sold Out',
         className: 'border-amber-400/30 bg-amber-500/15 text-amber-200',
       });
-    } else {
-      badges.push({
-        label: 'Upcoming',
-        className: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
-      });
+      return badges;
     }
+
+    const liveTime = opts.liveSince ? new Date(opts.liveSince).getTime() : NaN;
+    const isLiveTimeValid = Number.isFinite(liveTime);
+    const hasBeenLiveFor24Hours =
+      isLiveTimeValid && Date.now() - liveTime >= 24 * 60 * 60 * 1000;
+
+    badges.push({
+      label: hasBeenLiveFor24Hours ? 'Selling Fast' : 'Upcoming',
+      className: hasBeenLiveFor24Hours
+        ? 'border-amber-400/30 bg-amber-500/15 text-amber-200'
+        : 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
+    });
   }
 
   return badges;
@@ -180,6 +193,7 @@ export default function EventCard({
     capacity,
     salesEnded: state.salesEnded,
     isEnded: state.isEnded,
+    liveSince: firstTT?.ticketsOnSaleAt ?? event.startsAt,
   });
 
   const timeIso = state.isEnded
@@ -188,12 +202,6 @@ export default function EventCard({
 
   const timeText = formatEventDateTime(timeIso);
   const timePrefix = state.isEnded ? 'Ended:' : 'Starts at:';
-
-  const remainingText =
-    state.isOnSale && !state.salesEnded && remainingCount !== null
-      ? `${Math.max(0, remainingCount)} left`
-      : '';
-
   const ctaText = state.isEnded ? 'View recap →' : 'View details →';
 
   return (
@@ -250,8 +258,6 @@ export default function EventCard({
               </span>
             ) : null}
           </div>
-
-          <div className="text-sm text-white/60">{remainingText}</div>
         </div>
 
         <div className="mt-5 text-sm font-semibold text-white/90">

@@ -1,27 +1,22 @@
 // src/app/api/admin/cancel-events/route.ts
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { pool } from '@/lib/db';
 import { Resend } from 'resend';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
 import type { VenueKey } from '@/lib/venueConfig';
+import { getStripeClient, normalizeVenueKey } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 type Body = {
-  eventId?: string; // public.events.id (uuid)
-  sanityEventId?: string; // public.events.sanity_event_id (text)
+  eventId?: string;
+  sanityEventId?: string;
   reason?: string;
   dryRun?: boolean;
   cancelEvenIfRefundsFail?: boolean;
 };
-
-function normalizeVenueKey(value: string | null | undefined): VenueKey {
-  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
-}
 
 function getVenueEmailBranding(venueKey: VenueKey) {
   if (venueKey === 'prohibition') {
@@ -216,6 +211,7 @@ export async function POST(req: Request) {
 
   const venueKey = normalizeVenueKey(ev.venue_key);
   const branding = getVenueEmailBranding(venueKey);
+  const stripe = getStripeClient(venueKey);
 
   const results: Array<{
     orderId: string;
@@ -352,18 +348,21 @@ export async function POST(req: Request) {
     }
   }
 
-  return json({
-    ok: failures === 0,
-    ms: Date.now() - startedAt,
-    event: {
-      id: ev.id,
-      title: ev.title,
-      status: ev.status,
-      venue_key: ev.venue_key,
+  return json(
+    {
+      ok: failures === 0,
+      ms: Date.now() - startedAt,
+      event: {
+        id: ev.id,
+        title: ev.title,
+        status: ev.status,
+        venue_key: ev.venue_key,
+      },
+      paidOrdersFound: paidOrders.length,
+      refundedCount: results.filter((r) => r.refunded).length,
+      failedCount: failures,
+      results,
     },
-    paidOrdersFound: paidOrders.length,
-    refundedCount: results.filter((r) => r.refunded).length,
-    failedCount: failures,
-    results,
-  });
+    { status: failures === 0 ? 200 : 400 },
+  );
 }

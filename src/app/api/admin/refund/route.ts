@@ -1,13 +1,11 @@
 // src/app/api/admin/refund/route.ts
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { pool } from '@/lib/db';
 import { applyRefundToOrder } from '@/lib/refunds/applyRefundToOrder';
 import type { VenueKey } from '@/lib/venueConfig';
+import { getStripeClient, normalizeVenueKey } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 type Body = {
   orderId: string;
@@ -18,10 +16,6 @@ function getAuthToken(req: Request) {
   const h = req.headers.get('authorization') || '';
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1] ?? null;
-}
-
-function normalizeVenueKey(value: string | null | undefined): VenueKey {
-  return value === 'prohibition' ? 'prohibition' : 'jungle_bird';
 }
 
 export async function POST(req: Request) {
@@ -88,7 +82,8 @@ export async function POST(req: Request) {
       venue_key: string | null;
     };
 
-    const venueKey = normalizeVenueKey(order.venue_key);
+    const venueKey: VenueKey = normalizeVenueKey(order.venue_key);
+    const stripe = getStripeClient(venueKey);
 
     if (order.status === 'refunded' || order.status === 'cancelled') {
       await client.query('commit');
