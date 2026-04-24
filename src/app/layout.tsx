@@ -1,4 +1,5 @@
 import './globals.css';
+import MetaPixel from '@/components/shared/MetaPixel';
 import type { Metadata } from 'next';
 import { begumSemiBold, mikadoBold } from './fonts';
 import { Analytics } from '@vercel/analytics/react';
@@ -110,6 +111,7 @@ export default function RootLayout({
             __html: JSON.stringify(localBusinessJsonLd),
           }}
         />
+        <MetaPixel />
         {children}
         <Analytics />
       </body>
